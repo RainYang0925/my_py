@@ -6,6 +6,7 @@ __version__ = '1.0,20150901'
 __license__ = 'copy left'
 
 import os, subprocess, platform, json, re, urllib
+import threading
 from bottle import *
 
 pt_name = platform.platform()
@@ -46,15 +47,18 @@ def list_devices():
 	resp = dict()
 	resp['status'] = 0
 	resp['platform'] = pt_name
+
+	global devices
 	devices = list()
-	# android devices
-	fh = ex_cmd('adb devices -l')
-	for line in fh:
+
+	# thread start
+	def list_devices_sub(line):
 		# print line
 		# 5T2SQL1563015797       device product:P7-L07 model:HUAWEI_P7_L07 device:hwp7
 		m = re.search(r'(\S+)\s+device.*model:(\S+)', line)
 		if m:
 			# print m.groups()
+			global devices
 			tps = dict()
 			tps['type'] = 'Android'
 			# udid
@@ -69,11 +73,22 @@ def list_devices():
 			tps['version'] = fh3[0]
 			#
 			devices.append(tps)
+
+	# thread def end
+	fh = ex_cmd('adb devices -l 2>NULL')
+	thrs = list()
+	for line in fh:
+		t = threading.Thread(target=list_devices_sub, args=(line,))
+		t.start()
+		thrs.append(t)
+	for t in thrs:
+		t.join()
+
 	# mac
 	if pt_name == 'Mac OS X':
-		fh = ex_cmd('instruments -s devices')
+		fh = ex_cmd('instruments -s devices 2>NULL')
 		for line in fh:
-			m = re.search(r'(.+)\s{1}\((\S+)\)\s{1}\[(.+)\]', line)
+			m = re.search(r'(.+)\s{1}\((\S+)\)\s{1}\[([a-z0-9]+)\]', line)
 			if m:
 				# print m.groups()
 				tps = dict()
@@ -184,7 +199,23 @@ def install_apk():
 	udid = request.forms.get('udid')
 	resp = dict()
 	resp['status'] = 0
+
+	global devices
 	devices = list()
+
+	# thread start
+	def install_apk_sub(ud, package, app_path):
+		global devices
+		ex_cmd('adb -s %s uninstall %s' % (ud, package))
+		res = ex_cmd('adb -s %s install %s' % (ud, app_path))
+		tps = dict()
+		tps['udid'] = ud
+		tps['flag'] = res[1]
+		devices.append(tps)
+
+	# thread end
+
+
 	if app_path and package:
 		# print app_path
 		if os.path.exists(app_path):
@@ -209,14 +240,15 @@ def install_apk():
 					local_udids.append(udid)
 			# 全部安装。
 			# print "install all"
+			thrs = list()
 			for ud in local_udids:
 				print "install apk for %s " % ud
-				ex_cmd('adb -s %s uninstall %s' % (ud, package))
-				res = ex_cmd('adb -s %s install %s' % (ud, app_path))
-				tps = dict()
-				tps['udid'] = ud
-				tps['flag'] = res[1]
-				devices.append(tps)
+				t = threading.Thread(target=install_apk_sub, args=(ud, package, app_path))
+				t.start()
+				thrs.append(t)
+			for t in thrs:
+				t.join()
+
 			resp['result'] = devices
 		else:
 			resp['status'] = 404
