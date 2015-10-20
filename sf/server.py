@@ -5,7 +5,7 @@ __author__ = 'among,lifeng29@163.com'
 __version__ = '1.0,20151010'
 __license__ = 'copy left'
 
-import pymssql, json, urllib, urllib2
+import pymssql, json, socket, urllib, urllib2
 import threading
 from bottle import *
 
@@ -17,7 +17,19 @@ db_name = 'DCTT'
 # appium表名：appium
 # 执行机的地址配置，包括ip和端口号
 sf_host = ('10.1.38.76:8080', '10.1.38.98:8080')
+
 # init
+socket.setdefaulttimeout(5)
+socket.socket._bind = socket.socket.bind
+
+
+def my_socket_bind(self, *args, **kwargs):
+	self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+	return socket.socket._bind(self, *args, **kwargs)
+
+
+socket.socket.bind = my_socket_bind
+
 app = Bottle()
 
 # db connect
@@ -39,7 +51,31 @@ def status():
 def list_runner():
 	resp = dict()
 	resp['status'] = 0
-	resp['runner'] = sf_host
+
+	global sf_online
+	sf_online = list()
+	# thread start
+	def list_runner_sub(sf_adv):
+		url1 = "http://%s/status" % sf_adv
+		# print url1
+		rstmp1 = http_get(url1)
+		if rstmp1 != 'error':
+			global sf_online
+			sf_online.append(sf_adv)
+		# rstmp2 = json.loads(rstmp1, encoding='utf-8')
+		# platform = rstmp2['platform']
+
+	# thread def end
+
+	thrs = list()
+	for sf_adv in sf_host:
+		t = threading.Thread(target=list_runner_sub, args=(sf_adv,))
+		t.start()
+		thrs.append(t)
+	for t in thrs:
+		t.join()
+
+	resp['runner'] = sf_online
 	return resp
 
 
@@ -106,8 +142,8 @@ def ref_devices():
 			model = dev_info['model']
 			type = dev_info['type']
 			# print udid,screen_size
-			sql = "update mobile set MT_ONLINE='%s',MT_TYPE='%s',MT_FIELD_01='%s',MT_OPREATION='%s',MT_IPADDRESS='%s',MT_UPDATEON=getDate() where MT_UDID='%s'" % (
-				1, type, screen_size, version, ip, udid)
+			sql = "update mobile set MT_ONLINE='%s',MT_OPREATION='%s',MT_IPADDRESS='%s',MT_UPDATEON=getDate() where MT_UDID='%s'" % (
+				1, version, ip, udid)
 		else:
 			sql = "update mobile set MT_ONLINE='%s',MT_IPADDRESS='%s',MT_UPDATEON=getDate() where MT_UDID='%s'" % (
 				0, '', db_dev)

@@ -5,7 +5,7 @@ __author__ = 'among,lifeng29@163.com'
 __version__ = '1.0,20150901'
 __license__ = 'copy left'
 
-import os, subprocess, platform, json, re, urllib
+import os, subprocess, platform, json, re, socket, urllib
 import threading
 from bottle import *
 
@@ -26,6 +26,17 @@ else:
 	quit()
 
 # init
+socket.setdefaulttimeout(5)
+socket.socket._bind = socket.socket.bind
+
+
+def my_socket_bind(self, *args, **kwargs):
+	self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+	return socket.socket._bind(self, *args, **kwargs)
+
+
+socket.socket.bind = my_socket_bind
+
 app = Bottle()
 
 
@@ -135,6 +146,7 @@ def list_appium():
 								if rstmp2 != 'error':
 									rstmp2 = json.loads(rstmp2, encoding='utf-8')
 									tps['udid'] = rstmp2['value']['deviceName']
+									tps['app'] = rstmp2['value']['appPackage']
 									tps['phone_type'] = rstmp2['value']['platformName']
 						appium.append(tps)
 
