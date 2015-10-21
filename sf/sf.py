@@ -226,8 +226,10 @@ def install_apk():
 		devices.append(tps)
 
 	# thread end
-
-
+	print '#' * 20
+	print 'insatll apk debug message'
+	print udid, package, app_path
+	print '#' * 20
 	if app_path and package:
 		# print app_path
 		if os.path.exists(app_path):
