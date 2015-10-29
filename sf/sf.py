@@ -13,12 +13,12 @@ pt_name = platform.platform()
 
 if pt_name.startswith('Windows'):
 	pt_name = 'Windows'
-	appium_start = r'"C:/Program Files/Appium/node.exe" "C:/Program Files/Appium/node_modules/appium/lib/server/main.js" --command-timeout 7200 --local-timezone'
+	appium_start = r'"C:/Program Files/Appium/node.exe" "C:/Program Files/Appium/node_modules/appium/lib/server/main.js" --command-timeout 7200 --session-override --local-timezone'
 	appium_logpath = r'C:\appium_log'
 	nul = 'NUL'
 elif pt_name.startswith('Darwin'):
 	pt_name = 'Mac OS X'
-	appium_start = '/Applications/Appium.app/Contents/Resources/node/bin/node /Applications/Appium.app/Contents/Resources/node_modules/appium/lib/server/main.js --command-timeout 7200 --local-timezone'
+	appium_start = '/Applications/Appium.app/Contents/Resources/node/bin/node /Applications/Appium.app/Contents/Resources/node_modules/appium/lib/server/main.js --command-timeout 7200 --session-override --local-timezone'
 	appium_logpath = '/tmp'
 	nul = '/dev/null'
 else:
