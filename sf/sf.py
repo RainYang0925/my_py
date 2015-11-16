@@ -76,8 +76,12 @@ def list_devices():
 			tps['udid'], tps['model'] = m.groups()
 			# wm size
 			fh2 = ex_cmd('adb -s %s shell wm size' % tps['udid'])
-			wm_name, wm_size = fh2[0].split(':')
-			wm_size = wm_size.strip()
+			try:
+				wm_name, wm_size = fh2[0].split(':')
+				wm_size = wm_size.strip()
+			except Exception, ex:
+				print "adb shell wm size error:%s" % ex
+				wm_size = ''
 			tps['screen size'] = wm_size
 			# android version
 			fh3 = ex_cmd('adb -s %s shell getprop ro.build.version.release' % tps['udid'])
@@ -219,10 +223,10 @@ def install_apk():
 	def install_apk_sub(ud, package, app_path):
 		global devices
 		ex_cmd('adb -s %s uninstall %s' % (ud, package))
-		res = ex_cmd('adb -s %s install %s' % (ud, app_path))
+		res = ex_cmd('adb -s %s install -r %s' % (ud, app_path))
 		tps = dict()
 		tps['udid'] = ud
-		tps['flag'] = res[1]
+		tps['flag'] = res[-1]
 		devices.append(tps)
 
 	# thread end
