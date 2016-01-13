@@ -1,5 +1,32 @@
 # 说明 #
 
+sf.py
+版本：2.0 20160113
+
+----------
+##更新如下：##
+
+1.     解决老版本中占用端口不释放的问题。
+1.     升级为python3，需要安装新版本的python3，不再支持python2.x版本。
+1.     加入app上传的功能，调试地址为：/upload，仅支持ipa和apk文件，上传后返回md5值和路径，可根据路径再调用/install_app 进行app安装
+1.     增加查看设备信息的接口，地址为：/device/<udid>/info/<prop>，prop为属性名称
+1.     增加查看实时截图的接口：地址为：/device/<udid>/png/<prop>，prop的值如为refresh，则实时更新，否则为使用老的缓存图片
+1.     改用多线程机制，提升性能和稳定性。
+1.     server.py为最后一个版本，后续不再维护，后续由平台端直接调用sf.py和维护数据库。
+
+
+
+##安装方法：##
+
+1. 卸载原来的python2，后续版本不再支持python2
+1. 安装python3，在windows上安装pymssql的exe文件
+1. 安装第三方包 pip install CherryPy-4.0.0-py3-none-any.whl (mac和win一样的安装)
+1. 在mac中安装第三方运行环境：brew install --HEAD ideviceinstaller （不需要ios实时截图的可不用）
+1. 在有连接设备的机器上（win和mac），启动python sf.py
+1. 启动管理服务（win），python server.py 
+    
+
+
 
 ## 主要功能 ##
 提供json wire protocol形式的接口，用于管理appium，和安卓、iOS移动设备。
@@ -119,3 +146,4 @@ sf.py 程序的 15，16行，表示你windows机器上appium的安装路径和nu
 	py程序使用了基于bottle的web框架，在某些时候发现，如果使用ctrl + c的方式，停止py程序，则有可能造成占用的端口无法释放，通过netstat -ano|findstr 8080可以看到占用pid号，但实际的pid号已经不存在。
 	此问题在windows上遇到过，也不是经常出现，在mac上暂未发现。
 	如果出现了，只有通过注销或重启操作系统。。。 =_=
+	（注：已解决，更新到python3就可以了，O(∩_∩)O）

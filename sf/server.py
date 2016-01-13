@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-# _*_ coding: utf-8 _*_
+# -*- coding: utf-8 -*-
 
 __author__ = 'among,lifeng29@163.com'
-__version__ = '1.0,20151010'
-__license__ = 'copy left'
+__version__ = '2.0,20160113'
+__license__ = 'copy left,last version'
 
-import pymssql, json, socket, urllib, urllib2
+import pymssql, json, socket, urllib.request, urllib.parse
 import threading
 from bottle import *
 
@@ -19,16 +19,7 @@ db_name = 'DCTT'
 sf_host = ('10.1.38.76:8080', '10.1.38.98:8080')
 
 # init
-socket.setdefaulttimeout(5)
-socket.socket._bind = socket.socket.bind
-
-
-def my_socket_bind(self, *args, **kwargs):
-	self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-	return socket.socket._bind(self, *args, **kwargs)
-
-
-socket.socket.bind = my_socket_bind
+socket.setdefaulttimeout(10)
 
 app = Bottle()
 
@@ -42,7 +33,7 @@ def status():
 	# return template('{"status": 0,"test": "{{name}}"}', name=name)
 	resp = dict()
 	resp['status'] = 0
-	resp['version'] = '1.0'
+	resp['version'] = '2.0'
 	return resp
 
 
@@ -222,7 +213,7 @@ def ref_appium():
 		try:
 			version = apm_info['version']
 			pid = apm_info['pid']
-		except Exception, ex:
+		except Exception as ex:
 			version = ''
 			pid = ''
 		# to
@@ -244,11 +235,11 @@ def ref_appium():
 	return resp
 
 
-# 安装，更新apk，提供调试用页面
-@app.route('/install_apk', method='GET')
+# 安装，更新app，提供调试用页面
+@app.route('/install_app', method='GET')
 def install_show():
 	return '''
-	<form action="/install_apk" method="post">
+	<form action="/install_app" method="post">
 	app_select: <input type="file" name="app_select" style="width:500px" value="Browse..." /><br>
 	copy text to : <br>
 	app_path: <input type="text" name="app_path" style="width:500px" /><br>
@@ -259,9 +250,9 @@ def install_show():
 	'''
 
 
-# 安装，更新apk的post方法
-@app.route('/install_apk', method='POST')
-def install_apk():
+# 安装，更新app的post方法
+@app.route('/install_app', method='POST')
+def install_app():
 	app_path = request.forms.get('app_path')
 	package = request.forms.get('package')
 	udid = request.forms.get('udid')
@@ -290,7 +281,7 @@ def install_apk():
 				sf_ip = sf_adv.split(':')[0]
 				# print ip, sf_ip, sf_adv
 				if ip == sf_ip:
-					url = 'http://%s/install_apk' % sf_adv
+					url = 'http://%s/install_app' % sf_adv
 			if url != '':
 				resp = http_post(url, data)
 			else:
@@ -344,25 +335,26 @@ def reset_appium():
 
 def http_get(url):
 	try:
-		gt = urllib.urlopen(url)
-	except Exception, ex:
-		print "get url %s failed" % url, ex
+		gt = urllib.request.urlopen(url)
+	except Exception as ex:
 		return "error"
 	else:
 		if gt.getcode() == 200:
 			res = gt.read()
-			return res
+			res_str = res.decode('utf8')
+			gt.close()
+			return res_str
 		else:
 			return "error"
 
 
 def http_post(url, data):
-	data = urllib.urlencode(data)
-	req = urllib2.Request(url=url, data=data)
+	data = urllib.parse.urlencode(data)
+	req = urllib.request.Request(url, data)
 	try:
-		gt = urllib2.urlopen(req)
-	except Exception, ex:
-		print "get url %s failed" % url, ex
+		gt = urllib.request.urlopen(req)
+	except Exception as ex:
+		print("get url %s failed" % (url, ex))
 		return "error"
 	else:
 		if gt.getcode() == 200:
@@ -372,4 +364,4 @@ def http_post(url, data):
 			return "error"
 
 
-run(app, host='0.0.0.0', port=9090, debug=True)
+run(app=app, server='cherrypy', host='0.0.0.0', port=9090, reloader=True, debug=True)
