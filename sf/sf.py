@@ -5,9 +5,14 @@ __author__ = 'among,lifeng29@163.com'
 __version__ = '[1.0,20150901],[2.0,20160111]'
 __license__ = 'copy left'
 
-import os, sys, subprocess, platform, json, re, uuid, hashlib, socket, urllib.request
+import hashlib
+import json
 import logging
-import threading
+import platform
+import socket
+import urllib.request
+import uuid
+
 from bottle import *
 
 if sys.version_info < (3, 4):
@@ -174,7 +179,7 @@ def list_appium():
 									tps['phone_type'] = rstmp2['value']['platformName']
 						appium.append(tps)
 
-	# mac 
+	# mac
 	else:
 		fh1 = ex_cmd('ps -ef|grep appium |grep -v /bin/sh')
 		for line1 in fh1:
@@ -510,4 +515,4 @@ def file_md5(file):
 	return md5_value
 
 
-run(app=app, server='cherrypy', host='0.0.0.0', port=8080, reloader=True, debug=True)
+run(app=app, server='cherrypy', host='0.0.0.0', port=8080, reloader=False, debug=True)
