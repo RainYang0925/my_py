@@ -41,4 +41,4 @@ def monitor():
 	return mon_page()
 
 
-run(app=app, host='0.0.0.0', port=port, reloader=False, debug=True)
+run(app=app, host='0.0.0.0', port=port, reloader=False, quiet=True, debug=True)

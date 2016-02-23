@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <PerformanceMonitor>
 <object class="监控类别" name="常用" desc="Linux系统常用监控项" type="ScriptMonitor">
-<counter name="CPU使用率" desc="CPU使用率" val="{{cpu_Total}}"/>
-<counter name="内存使用率" desc="物理内存使用率" val="{{MemUsage_pct}}"/>
+<counter name="CPU使用率(%)" desc="CPU使用率" val="{{cpu_Total}}"/>
+<counter name="内存使用率(%)" desc="物理内存使用率" val="{{MemUsage_pct}}"/>
 </object>
 <object class="监控类别" name="CPU" desc="Linux系统CPU监控项" type="ScriptMonitor">
 <counter name="1_Total(%)" desc="CPU总使用率" val="{{cpu_Total}}"/>
