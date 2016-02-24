@@ -1,6 +1,6 @@
 # my_py
 
-my py repository
+my python,perl repository
 (python,perl相关)
 
 lifeng29@163.com
