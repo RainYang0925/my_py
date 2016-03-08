@@ -36,7 +36,7 @@ def mon_init():
 
 # mon
 def mon_run():
-	while (1):
+	while True:
 		thrs = list()
 		t1 = threading.Thread(target=Memory)
 		t1.start()
@@ -124,7 +124,7 @@ def Cpu():
 
 if __name__ == '__main__':
 	mon_init()
-	while (1):
+	while True:
 		result = mon_page()
-		# print(result)
+		print(result)
 		sleep(interval)

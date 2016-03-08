@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 #Filename：amon.pl
 #Author：among lifeng29@163.com 20160219
 #Desc: AIX系统性能监控工具

@@ -6,6 +6,7 @@ __version__ = '1.0,20160224'
 __license__ = 'copy left'
 
 import subprocess
+from time import sleep, time
 from bottle import template
 
 # init
@@ -48,7 +49,7 @@ def ex_cmd(cmd):
 
 if __name__ == '__main__':
 	mon_init()
-	while (1):
+	while True:
 		result = mon_page()
 		print(result)
 		sleep(interval)
