@@ -2,62 +2,64 @@
 # -*- coding: utf-8 -*-
 
 __author__ = 'among,lifeng29@163.com'
-__version__ = '[1.0,20150901],[2.0,20160111]'
+__version__ = '[1.0,20150901],[2.0,20160111],[3.0,20160309]'
 __license__ = 'copy left'
 
-import hashlib
 import json
 import logging
 import platform
 import socket
-import urllib.request
 import uuid
+from configparser import ConfigParser
+from lib import *
 
-from bottle import *
 
+# check env
 if sys.version_info < (3, 4):
 	raise RuntimeError('At least Python 3.4 is required.')
-
 pt_name = platform.platform()
-static_path = os.path.join(sys.path[0], 'static')
-upload_path = os.path.join(sys.path[0], 'pkg')
-log_path = os.path.join(sys.path[0], 'run.log')
-
 if pt_name.startswith('Windows'):
 	pt_name = 'Windows'
-	appium_start = r'"C:/Program Files/Appium/node.exe" "C:/Program Files/Appium/node_modules/appium/lib/server/main.js" --command-timeout 7200 --session-override --local-timezone'
-	appium_logpath = r'C:\appium_log'
-	nul = 'NUL'
 elif pt_name.startswith('Darwin'):
 	pt_name = 'Mac OS X'
-	appium_start = '/Applications/Appium.app/Contents/Resources/node/bin/node /Applications/Appium.app/Contents/Resources/node_modules/appium/lib/server/main.js --command-timeout 7200 --session-override --local-timezone'
-	appium_logpath = '/tmp'
-	nul = '/dev/null'
 else:
 	print("not support on %s" % pt_name)
 	quit()
 
+# setting
+cf = ConfigParser()
+cf.read('config.ini')
+port = cf.getint('system', 'port')
+static_path = cf.get('system', 'static_dir')
+upload_path = cf.get('system', 'upload_dir')
+log_path = cf.get('system', 'logfile')
+
+# appium setting
+appium_port = cf.getint(pt_name, 'appium_port')
+appium_start = cf.get(pt_name, 'appium_cmd')
+appium_logpath = cf.get(pt_name, 'appium_log')
+nul = cf.get(pt_name, 'null')
+
 # init
-if not os.path.isdir(static_path):
-	os.makedirs(static_path)
 if not os.path.isdir(upload_path):
 	os.makedirs(upload_path)
-
+if not os.path.isdir(appium_logpath):
+	os.makedirs(appium_logpath)
 socket.setdefaulttimeout(10)
 logging.basicConfig(level=logging.DEBUG,
 					format='%(asctime)s %(filename)s[line:%(lineno)d][%(funcName)s] %(levelname)s %(message)s',
 					filename=log_path, filemode='a')
 app = Bottle()
+logging.info('...........................')
 logging.info('sf server starting up ...')
 
 
 # 测试用方法
 @app.route('/status', method='GET')
 def status():
-	# return template('{"status": 0,"test": "{{name}}"}', name=name)
 	resp = dict()
 	resp['status'] = 0
-	resp['version'] = '2.0'
+	resp['version'] = '3.0'
 	resp['platform'] = pt_name
 	logging.info(resp)
 	return resp
@@ -78,14 +80,12 @@ def static_png(filename):
 # 列出所有的移动设备
 @app.route('/list_devices', method='GET')
 def list_devices():
-	# res dict
 	resp = dict()
 	resp['status'] = 0
 	resp['platform'] = pt_name
 
 	global devices
 	devices = list()
-
 	# thread start
 	def list_devices_sub(line):
 		# print line
@@ -99,18 +99,23 @@ def list_devices():
 			# udid
 			tps['udid'], tps['model'] = m.groups()
 			# wm size
+			(wm_name, wm_size) = ('', '')
 			fh2 = ex_cmd('adb -s %s shell wm size' % tps['udid'])
 			try:
 				wm_name, wm_size = fh2[0].split(':')
 				wm_size = wm_size.strip()
 			except Exception as ex:
-				logging.exception("adb shell error on udid %s: wm size error:%s" % (tps['udid'], fh2))
+				logging.debug("adb shell error on udid %s: wm size error:%s" % (tps['udid'], fh2))
 				wm_size = ''
-			tps['screen size'] = wm_size
+			if wm_name == 'Physical size':
+				tps['screen size'] = wm_size
+			else:
+				print("adb shell error on udid %s: wm size error:%s" % (tps['udid'], fh2))
+				logging.debug("adb shell error on udid %s: wm size error:%s" % (tps['udid'], fh2))
+				tps['screen size'] = ''
 			# android version
 			fh3 = ex_cmd('adb -s %s shell getprop ro.build.version.release' % tps['udid'])
 			tps['version'] = fh3[0]
-			#
 			devices.append(tps)
 
 	# thread def end
@@ -125,14 +130,18 @@ def list_devices():
 
 	# mac
 	if pt_name == 'Mac OS X':
-		fh = ex_cmd('instruments -s devices')
+		fh = ex_cmd('idevice_id -l')
 		for line in fh:
-			m = re.search(r'(.+)\s{1}\((\S+)\)\s{1}\[([a-z0-9]+)\]', line)
-			if m:
-				# print m.groups()
+			if len(line) == 40:
 				tps = dict()
 				tps['type'] = 'iOS'
-				tps['model'], tps['version'], tps['udid'] = m.groups()
+				tps['udid'] = line
+				fh2 = ex_cmd('ideviceinfo -u %s -s' % line)
+				for line2 in fh2:
+					if line2.startswith('DeviceClass'):
+						tps['model'] = line2.split()[1]
+					elif line2.startswith('ProductVersion'):
+						tps['version'] = line2.split()[1]
 				devices.append(tps)
 	resp['devices'] = devices
 	logging.info(resp)
@@ -164,7 +173,7 @@ def list_appium():
 						# tps['cmd'] = line2
 						url1 = "http://127.0.0.1:%d/wd/hub/status" % int(port)
 						rstmp = http_get(url1)
-						if rstmp != 'error':
+						if not rstmp.startswith('error'):
 							rstmp = json.loads(rstmp, encoding='utf-8')
 							tps['version'] = rstmp['value']['build']['version']
 							if 'sessionId' in rstmp:
@@ -172,11 +181,13 @@ def list_appium():
 								tps['sessionid'] = sessionid
 								url2 = "http://127.0.0.1:%d/wd/hub/session/%s" % (int(port), sessionid)
 								rstmp2 = http_get(url2)
-								if rstmp2 != 'error':
+								if not rstmp2.startswith('error'):
 									rstmp2 = json.loads(rstmp2, encoding='utf-8')
 									tps['udid'] = rstmp2['value']['deviceName']
 									tps['app'] = rstmp2['value']['appPackage']
 									tps['phone_type'] = rstmp2['value']['platformName']
+								logging.info(rstmp2)
+						logging.info(rstmp)
 						appium.append(tps)
 
 	# mac
@@ -192,7 +203,7 @@ def list_appium():
 				# print m.groups()
 				url = "http://127.0.0.1:%d/wd/hub/status" % int(port)
 				rstmp = http_get(url)
-				if rstmp != 'error':
+				if not rstmp.startswith('error'):
 					rstmp = json.loads(rstmp, encoding='utf-8')
 					tps['version'] = rstmp['value']['build']['version']
 					if 'sessionId' in rstmp:
@@ -200,7 +211,7 @@ def list_appium():
 						tps['sessionid'] = sessionid
 						url2 = "http://127.0.0.1:%d/wd/hub/session/%s" % (int(port), sessionid)
 						rstmp2 = http_get(url2)
-						if rstmp2 != 'error':
+						if not rstmp2.startswith('error'):
 							rstmp2 = json.loads(rstmp2, encoding='utf-8')
 							tps['phone_type'] = rstmp2['value']['platformName']
 							if tps['phone_type'] == 'iOS':
@@ -211,7 +222,8 @@ def list_appium():
 								tps['udid'] = rstmp2['value']['udid']
 							else:
 								tps['udid'] = ''
-
+						logging.info(rstmp2)
+				logging.info(rstmp)
 				appium.append(tps)
 	resp['appium'] = appium
 	logging.info(resp)
@@ -337,7 +349,7 @@ def install_app():
 # 刷新devices，仅适用于安卓设备
 @app.route('/reset_devices', method='GET')
 def reset_devices():
-	ex_cmd2('adb kill-server')
+	ex_cmd('adb kill-server')
 	ex_cmd2('adb start-server')
 	resp = dict()
 	resp['status'] = 0
@@ -361,7 +373,7 @@ def reset_appium():
 	# start appium
 	all_dev = list_devices()['devices']
 	# default appium server port
-	port = 4723
+	port = appium_port
 	# print port
 	for dev in all_dev:
 		# for dev in range(4):
@@ -375,6 +387,38 @@ def reset_appium():
 	return resp
 
 
+# 根据udid获取设备状态
+@app.route('/device/<udid>/state', method='GET')
+def device_state(udid):
+	resp = dict()
+	resp['status'] = 0
+	if len(udid) == 40:
+		if pt_name == 'Mac OS X':
+			res = ex_cmd('idevicename -u %s' % udid)
+		else:
+			res = 'ERROR: ideviceinfo not support on other os'
+		if len(res) == 1:
+			res = res[0]
+			if res.startswith('ERROR'):
+				resp['value'] = 'offline'
+			else:
+				resp['value'] = 'online'
+		else:
+			resp['value'] = 'unknown'
+	else:
+		res = ex_cmd('adb -s %s get-state' % udid)
+		if len(res) == 1:
+			res = res[0]
+			if res == 'device':
+				resp['value'] = 'online'
+			else:
+				resp['value'] = 'offline'
+		else:
+			resp['value'] = 'unknown'
+	logging.info(resp)
+	return resp
+
+
 # 根据udid获取设备信息
 @app.route('/device/<udid>/info/<prop>', method='GET')
 def device_info(udid, prop):
@@ -383,18 +427,18 @@ def device_info(udid, prop):
 	resp['prop'] = prop
 	if len(udid) == 40:
 		if pt_name == 'Mac OS X':
-			if prop != 'all':
-				res = ex_cmd('ideviceinfo -u %s -k %s' % (udid, prop))
-			else:
-				res = ex_cmd('ideviceinfo -u %s -x' % (udid))
+			res = ex_cmd('ideviceinfo -u %s -k %s' % (udid, prop))
 		else:
-			res = 'not support idevices on other os'
+			res = 'error: ideviceinfo not support on other os'
 	else:
-		# to_do
-		if prop != 'all':
-			res = ex_cmd('adb -s %s shell getprop %s' % (udid, prop))
-		else:
-			res = ex_cmd('adb -s %s shell getprop' % (udid))
+		res = ex_cmd('adb -s %s shell getprop %s' % (udid, prop))
+	if len(res) == 0:
+		res = ''
+		resp['status'] = 404
+	elif len(res) == 1:
+		res = res[0]
+		if res.startswith('error'):
+			resp['status'] = 500
 	resp['value'] = res
 	logging.info(resp)
 	return resp
@@ -403,7 +447,7 @@ def device_info(udid, prop):
 # 根据udid获取设备实时截图
 @app.route('/device/<udid>/png/<prop>', method='GET')
 def device_png(udid, prop):
-	fname = os.path.join(sys.path[0], 'static', udid)
+	fname = os.path.join(static_path, udid)
 	if prop != 'refresh' and os.path.exists('%s.png' % fname):
 		logging.debug('use old png file: %s.png' % fname)
 	else:
@@ -412,7 +456,8 @@ def device_png(udid, prop):
 				ex_cmd('idevicescreenshot -u %s %s.tiff' % (udid, fname))
 				ex_cmd('sips -s format png %s.tiff --out %s.png' % (fname, fname))
 			else:
-				res = 'not support idevice on other os'
+				res = 'error: not support idevice on other os'
+				logging.info(res)
 				return res
 		# android support
 		else:
@@ -422,7 +467,11 @@ def device_png(udid, prop):
 			ex_cmd('adb -s %s shell screencap -p /sdcard/screenshot.png' % udid)
 			ex_cmd('adb -s %s pull /sdcard/screenshot.png %s.png' % (udid, fname))
 		logging.debug('get new png file: %s.png' % fname)
-	return static_file(filename='%s.png' % udid, root=static_path, mimetype='image/png')
+	if os.path.exists('%s.png' % fname):
+		return static_file(filename='%s.png' % udid, root=static_path, mimetype='image/png')
+	else:
+		logging.debug('get 404 png file: %s' % os.path.join(static_path, '404.png'))
+		return static_file(filename='404.png', root=static_path, mimetype='image/png')
 
 
 @app.route('/upload', method='GET')
@@ -467,52 +516,4 @@ def do_upload():
 	return resp
 
 
-def http_get(url):
-	try:
-		logging.info("connect to url %s" % (url))
-		gt = urllib.request.urlopen(url)
-	except Exception as ex:
-		logging.exception(ex)
-		return "error"
-	else:
-		if gt.getcode() == 200:
-			res = gt.read()
-			res_str = res.decode('utf8')
-			gt.close()
-			logging.info("url response: %s" % (res_str))
-			return res_str
-		else:
-			return "error"
-
-
-def ex_cmd(cmd):
-	logging.debug(cmd)
-	res = list()
-	try:
-		fh = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-		fh.wait()
-		for line in fh.stdout.readlines():
-			line = line.decode().strip()
-			if line != '':
-				res.append(line)
-		fh.stdout.close()
-	except Exception as ex:
-		logging.exception(ex)
-		res.append('error')
-	# logging.info(res)
-	return res
-
-
-def ex_cmd2(cmd):
-	logging.debug(cmd)
-	subprocess.Popen(cmd, shell=True)
-
-
-def file_md5(file):
-	md5file = open(file, 'rb')
-	md5_value = hashlib.md5(md5file.read()).hexdigest()
-	md5file.close()
-	return md5_value
-
-
-run(app=app, server='cherrypy', host='0.0.0.0', port=8080, reloader=False, debug=True)
+run(app=app, server='cherrypy', host='0.0.0.0', port=port, reloader=False, debug=True)
