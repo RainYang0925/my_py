@@ -1,149 +1,92 @@
 # 说明 #
 
-sf.py
-版本：2.0 20160113
+版本：3.0 20160317
+
+lifeng29@163.com
 
 ----------
-##更新如下：##
-
-1.     解决老版本中占用端口不释放的问题。
-1.     升级为python3，需要安装新版本的python3，不再支持python2.x版本。
-1.     加入app上传的功能，调试地址为：/upload，仅支持ipa和apk文件，上传后返回md5值和路径，可根据路径再调用/install_app 进行app安装
-1.     增加查看设备信息的接口，地址为：/device/<udid>/info/<prop>，prop为属性名称
-1.     增加查看实时截图的接口：地址为：/device/<udid>/png/<prop>，prop的值如为refresh，则实时更新，否则为使用老的缓存图片
-1.     改用多线程机制，提升性能和稳定性。
-1.     server.py为最后一个版本，后续不再维护，后续由平台端直接调用sf.py和维护数据库。
-
-
-
 ##安装方法：##
 
-1. 卸载原来的python2，后续版本不再支持python2
-1. 安装python3，在windows上安装pymssql的exe文件
-1. 安装第三方包 pip install CherryPy-4.0.0-py3-none-any.whl (mac和win一样的安装)
-1. 在mac中安装第三方运行环境：brew install --HEAD ideviceinstaller （不需要ios实时截图的可不用）
-1. 在有连接设备的机器上（win和mac），启动python sf.py
-1. 启动管理服务（win），python server.py 
-    
-
-
+1. 系统需求: Windows或mac os x，Python3.4及以上版本；
+2. 需安装配置好java，appium，安卓SDK环境；
+3. Python依赖包：CherryPy，请使用pip install CherryPy 来安装；
+4. mac中支持iOS设备的第三方运行环境，使用brew install --HEAD ideviceinstaller 进行安装（需翻墙）；
+5. 在config.ini中按照运行环境信息修改配置信息；
+6. Windows通过bat执行，mac通过sh文件执行。
 
 ## 主要功能 ##
-提供json wire protocol形式的接口，用于管理appium，和安卓、iOS移动设备。
-
-## 部署方式 ##
-适用于Windows和MAC平台，其他平台暂不支持。
-
-基于python，请先安装python，无需安装其他第三方package。
-
-可按需修改的地方：
-sf.py 程序的 15，16行，表示你windows机器上appium的安装路径和nul的路径；20，21行，表示你mac机器上，appium的安装路径，nul不用修改。
-
-默认监听8080端口，如需修改，请修改最后一行中的port。
-
-启动方式：python sf.py
+提供json wire protocol形式的接口，用于管理selenium, appium和安卓、iOS移动设备。
 
 ## 功能列表 ##
-
-## 1：获取状态信息 ##
-	此方法可用于接口调试，无其他用处。
+**port**指sf启动后监听的端口，在congfig.ini文件中配置。
+## 1：获取状态等信息 ##
+	此方法可用于获取状态等信息，如操作系统、版本号、类型等。
  	http方法：get
  	url: http://ip:port/status
- 	返回值:
-	{
-	"status": 0,
-	"platform": "Windows",
-	"version": "1.0"
-	}
 
-
-## 2：获取连接上的设备: ##
-	此方法可获取安卓和iOS设备的信息
+## 2：获取已连接上的设备 ##
+	用于获取安卓和iOS设备的信息，iOS仅限mac平台
  	http方法：get
  	url: http://ip:port/list_devices
- 	返回值:
-	{
-		"status": 0,
-		"platform": "Windows",
-		"devices": [{
-			"udid": "5T2SQL1563015797",
-			"screen size": "720x1280",
-			"model": "HUAWEI_P7_L07",
-			"version": "4.4.2",
-			"type": "Android"
-		}, {
-			"udid": "750BBLE224M7",
-			"screen size": "1152x1920",
-			"model": "MX4",
-			"version": "4.4.2",
-			"type": "Android"
-		}]
-	}
 	
-## 3：获取已经开启的appium服务 ##
+## 3：获取appium服务信息 ##
+	用于获取appium的状态信息，包括端口，版本等
  	http方法：get
  	url: http://ip:port/list_appium
- 	返回值:
- 	#如果appium正在执行，也会返回执行的phone_type，udid，sessionid信息，如果不在运行，则只有pid，port等
-	{
-		"status": 0,
-		"platform": "Windows",
-		"appium": [{
-			"phone_type": "Android",
-			"udid": "5T2SQL1563015797",
-			"pid": "2816",
-			"sessionid": "a558cba3-5778-4847-9a2e-fa8c193f15b9",
-			"version": "1.4.0",
-			"port": "4723"
-		}, {
-			"version": "1.4.0",
-			"pid": "1884",
-			"port": "4733"
-		}]
-	}
 
 ## 4：重置devices ##
- 	http方法：get
- 	url: http://ip:port//reset_devices
 	其实就是重启下adb...，仅适用于安卓
- 	返回值:
-	{"status": 0}
- 	
-## 5：重置appium ##
  	http方法：get
- 	url: http://ip:port//reset_appium
-	首先杀掉现在已有的appium服务，然后根据当前机器上连接的移动设备数量，自动启动appium服务，端口从4723开始，后续为4733，4743...
- 	返回值:
-	返回值都为0，请通过list_appium 方法重新获取appium的信息。
-	{"status": 0}
+ 	url: http://ip:port/reset_devices
 
-## 6：安装apk ##
- 	http方法：get和post，仅适用于安卓apk
- 	url: http://ip:port/install_apk
+## 5：重置appium ##
+ 	首先杀掉现在已有的appium服务，然后根据当前机器上连接的移动设备数量，自动启动appium服务。
+	默认从4723开始，后续为4733，4743...
+	用于并发执行
+	http方法：get
+ 	url: http://ip:port/reset_appium
+
+## 6：获取设备在线状态 ##
+ 	查询设备是否在线。
+	http方法：get
+ 	url: http://ip:port/device/<udid>/state
+
+## 7：获取设备属性信息 ##
+ 	查询设备的属性信息
+	http方法：get
+ 	url: http://ip:port/device/<udid>/<prop>
+	prop为属性名称，安卓中使用adb shell getprop prop来获取，iOS中使用ideviceinfo -k prop来获取。
+
+## 8：获取设备实时截图 ##
+ 	查询设备的实时截图
+	http方法：get
+ 	url: http://ip:port/device/<udid>/png/<prop>
+	prop为refresh，则实时刷新，否则使用缓存图片，实时安卓和iOS。
+
+## 9：上传apk和ipa文件 ##
+ 	用于推送apk和ipa文件
+	http方法：get，post
+ 	url: http://ip:port/upload
+	get请求会返回一个页面，可手工调试。
+	post请求，请把文件放到pkg_data字段中。
+	post请求后，会返回保存的路径和文件的md5值。后续可调用install_app进行apk和ipa的安装。
+
+
+## 10：安装app ##
+ 	http方法：get和post，可安装apk和ipa
+ 	url: http://ip:port/install_app
 	get方法，为手动的方式，可以通过浏览器页面，点击提交apk。
 	post方式，直接发送apk的路径信息，可指定apk和udid信息
-
  	提交的参数：
-	app_path	\\10.0.247.57\Share\apk_release\xxx-yz-1.0.52.apk
-	package	    com.xxx.xxxx
-	udid	
-	以上信息，app_path为apk的路径，在mac上，路径为'/'格式，要求win和mac都要自己访问到，这里只发送路径。package 为卸载apk时用的，udid可选，如不填，就默认安装到所有的安卓设备上，如有值，则只安装到你指定的设备上。
-	
- 	返回值:
-	{
-		"status": 0,
-		"result": [{
-			"udid": "5T2SQL1563015797",
-			"flag": "Success"
-		}, {
-			"udid": "750BBLE224M7",
-			"flag": "Success"
-		}]
-	}
+	app_path：可使用upload文件返回的路径信息
+	package：com.xxx.xxxx
+	udid：可空
+
+## 11：获取selenium的状态信息 ##
+ 	获取selenium的端口号，当前运行的capabilities信息
+	http方法：get
+ 	url: http://ip:port/list_selenium
 
 
-# 遗留问题 #
-	py程序使用了基于bottle的web框架，在某些时候发现，如果使用ctrl + c的方式，停止py程序，则有可能造成占用的端口无法释放，通过netstat -ano|findstr 8080可以看到占用pid号，但实际的pid号已经不存在。
-	此问题在windows上遇到过，也不是经常出现，在mac上暂未发现。
-	如果出现了，只有通过注销或重启操作系统。。。 =_=
-	（注：已解决，更新到python3就可以了，O(∩_∩)O）
+# 其他 #
+	目前完成了后端接口的开发，还需要有好的前端进行调用。。。

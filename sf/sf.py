@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 __author__ = 'among,lifeng29@163.com'
-__version__ = '[1.0,20150901],[2.0,20160111],[3.0,20160309]'
+__version__ = '[1.0,20150901],[2.0,20160111],[3.0,20160317]'
 __license__ = 'copy left'
 
 import json
@@ -26,25 +26,19 @@ else:
 	print("not support on %s" % pt_name)
 	quit()
 
-# setting
+
+# global setting
 cf = ConfigParser()
 cf.read('config.ini')
 port = cf.getint('system', 'port')
 static_path = cf.get('system', 'static_dir')
 upload_path = cf.get('system', 'upload_dir')
+selenium_flag = cf.getboolean('system', 'selenium')
+appium_flag = cf.getboolean('system', 'appium')
 log_path = cf.get('system', 'logfile')
 
-# appium setting
-appium_port = cf.getint(pt_name, 'appium_port')
-appium_start = cf.get(pt_name, 'appium_cmd')
-appium_logpath = cf.get(pt_name, 'appium_log')
-nul = cf.get(pt_name, 'null')
 
 # init
-if not os.path.isdir(upload_path):
-	os.makedirs(upload_path)
-if not os.path.isdir(appium_logpath):
-	os.makedirs(appium_logpath)
 socket.setdefaulttimeout(10)
 logging.basicConfig(level=logging.DEBUG,
 					format='%(asctime)s %(filename)s[line:%(lineno)d][%(funcName)s] %(levelname)s %(message)s',
@@ -53,14 +47,47 @@ app = Bottle()
 logging.info('...........................')
 logging.info('sf server starting up ...')
 
+pt_system = platform.system()
+pt_node = platform.node()
+pt_version = platform.version()
+pt_machine = platform.machine()
 
-# 测试用方法
+# selenium,appium setting
+if appium_flag is True:
+	appium_port = cf.getint(pt_name, 'appium_port')
+	appium_start = cf.get(pt_name, 'appium_cmd')
+	appium_logpath = cf.get(pt_name, 'appium_log')
+	if not os.path.isdir(upload_path):
+		os.makedirs(upload_path)
+	if not os.path.isdir(appium_logpath):
+		os.makedirs(appium_logpath)
+if selenium_flag is True:
+	selenium_port = cf.get(pt_name, 'selenium_port')
+	selenium_cmd = cf.get(pt_name, 'selenium_cmd')
+	selenium_arg = cf.get(pt_name, 'selenium_arg')
+	selenium_log = cf.get(pt_name, 'selenium_log')
+	ie_driver = cf.get(pt_name, 'webdriver.ie.driver')
+	chrome_driver = cf.get(pt_name, 'webdriver.chrome.driver')
+	sm_start = 'java -jar ' + selenium_cmd + ' -port ' + selenium_port + ' ' + selenium_arg + ' -log ' + selenium_log
+	if chrome_driver.strip() != '':
+		sm_start = sm_start + ' -Dwebdriver.chrome.driver=' + chrome_driver
+	if ie_driver.strip() != '':
+		sm_start = sm_start + ' -Dwebdriver.ie.driver=' + ie_driver
+	logging.info('start selenium server: %s' % sm_start)
+	ex_cmd2(sm_start)
+
+
+# 获取全局信息
 @app.route('/status', method='GET')
 def status():
 	resp = dict()
 	resp['status'] = 0
-	resp['version'] = '3.0'
-	resp['platform'] = pt_name
+	resp['platform'] = pt_system
+	resp['hostname'] = pt_node
+	resp['version'] = pt_version
+	resp['machine'] = pt_machine
+	resp['appium'] = appium_flag
+	resp['selenium'] = selenium_flag
 	logging.info(resp)
 	return resp
 
@@ -83,7 +110,9 @@ def list_devices():
 	resp = dict()
 	resp['status'] = 0
 	resp['platform'] = pt_name
-
+	if appium_flag is False:
+		logging.info(resp)
+		return resp
 	global devices
 	devices = list()
 	# thread start
@@ -110,7 +139,6 @@ def list_devices():
 			if wm_name == 'Physical size':
 				tps['screen size'] = wm_size
 			else:
-				print("adb shell error on udid %s: wm size error:%s" % (tps['udid'], fh2))
 				logging.debug("adb shell error on udid %s: wm size error:%s" % (tps['udid'], fh2))
 				tps['screen size'] = ''
 			# android version
@@ -154,8 +182,10 @@ def list_appium():
 	resp = dict()
 	resp['status'] = 0
 	resp['platform'] = pt_name
+	if appium_flag is False:
+		logging.info(resp)
+		return resp
 	appium = list()
-
 	if pt_name == 'Windows':
 		fh1 = ex_cmd('wmic process where caption="node.exe" get handle')
 		for line1 in fh1:
@@ -349,10 +379,13 @@ def install_app():
 # 刷新devices，仅适用于安卓设备
 @app.route('/reset_devices', method='GET')
 def reset_devices():
-	ex_cmd('adb kill-server')
-	ex_cmd2('adb start-server')
 	resp = dict()
 	resp['status'] = 0
+	if appium_flag is False:
+		logging.info(resp)
+		return resp
+	ex_cmd('adb kill-server')
+	ex_cmd2('adb start-server')
 	logging.info(resp)
 	return resp
 
@@ -362,6 +395,9 @@ def reset_devices():
 def reset_appium():
 	resp = dict()
 	resp['status'] = 0
+	if appium_flag is False:
+		logging.info(resp)
+		return resp
 	all_apm = list_appium()['appium']
 	for ap in all_apm:
 		pid = int(ap['pid'])
@@ -378,7 +414,7 @@ def reset_appium():
 	for dev in all_dev:
 		# for dev in range(4):
 		logfile = os.path.join(appium_logpath, 'appium_%d.log' % port)
-		st_cmd = appium_start + ' --port %d --log %s' % (port, logfile) + ' >%s' % nul
+		st_cmd = appium_start + ' --port %d --log %s' % (port, logfile) + ' >%s' % os.devnull
 		logging.debug('start appium : ' + st_cmd)
 		ex_cmd2(st_cmd)
 		port += 10
@@ -392,6 +428,9 @@ def reset_appium():
 def device_state(udid):
 	resp = dict()
 	resp['status'] = 0
+	if appium_flag is False:
+		logging.info(resp)
+		return resp
 	if len(udid) == 40:
 		if pt_name == 'Mac OS X':
 			res = ex_cmd('idevicename -u %s' % udid)
@@ -424,6 +463,9 @@ def device_state(udid):
 def device_info(udid, prop):
 	resp = dict()
 	resp['status'] = 0
+	if appium_flag is False:
+		logging.info(resp)
+		return resp
 	resp['prop'] = prop
 	if len(udid) == 40:
 		if pt_name == 'Mac OS X':
@@ -512,6 +554,22 @@ def do_upload():
 	resp['status'] = 0
 	resp['save_path'] = save_file_name
 	resp['md5_value'] = md5_value
+	logging.info(resp)
+	return resp
+
+
+# 获取selenium状态信息，正在执行的session信息等
+@app.route('/list_selenium', method='GET')
+def list_selenium():
+	resp = dict()
+	resp['status'] = 0
+	if selenium_flag is True:
+		url = 'http://127.0.0.1:%d/wd/hub/sessions' % int(selenium_port)
+		rstmp = http_get(url)
+		if not rstmp.startswith('error'):
+			rstmp2 = json.loads(rstmp, encoding='utf-8')
+			resp['selenium_port'] = selenium_port
+			resp['value'] = rstmp2['value']
 	logging.info(resp)
 	return resp
 
