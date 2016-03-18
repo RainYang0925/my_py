@@ -61,7 +61,7 @@ lifeng29@163.com
  	查询设备的实时截图
 	http方法：get
  	url: http://ip:port/device/<udid>/png/<prop>
-	prop为refresh，则实时刷新，否则使用缓存图片，实时安卓和iOS。
+	prop为refresh，则实时刷新，否则使用缓存图片，支持安卓和iOS。
 
 ## 9：上传apk和ipa文件 ##
  	用于推送apk和ipa文件

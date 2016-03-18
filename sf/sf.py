@@ -6,6 +6,7 @@ __version__ = '[1.0,20150901],[2.0,20160111],[3.0,20160317]'
 __license__ = 'copy left'
 
 import json
+import codecs
 import logging
 import platform
 import socket
@@ -29,7 +30,8 @@ else:
 
 # global setting
 cf = ConfigParser()
-cf.read('config.ini')
+# cf.read('config.ini')
+cf.readfp(codecs.open('config.ini', 'r', 'utf-8-sig'))
 port = cf.getint('system', 'port')
 static_path = cf.get('system', 'static_dir')
 upload_path = cf.get('system', 'upload_dir')
