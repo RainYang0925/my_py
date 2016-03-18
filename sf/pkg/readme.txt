@@ -1,1 +1,0 @@
-ipa,apk file directory
