@@ -1,6 +1,6 @@
 # amon监控工具
 
-目前支持linux，osx，aix，Windows系统中的资源类监控。
+目前支持linux，osx，aix，Windows,Android系统中的资源类监控。
 amon的目录中同时支持linux和osx。
 
 ##传输协议

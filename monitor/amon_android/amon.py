@@ -12,8 +12,8 @@ from bottle import *
 
 
 # android app and device info
-PKG_NAME = 'com.czbank.mbank'
-UDID = 'DUYSSSIVDMUSVCDI'
+PKG_NAME = 'com.xxx.xxx'
+UDID = 'xxxxxxxxxxx'
 # init
 interval = 5
 port = 8888
