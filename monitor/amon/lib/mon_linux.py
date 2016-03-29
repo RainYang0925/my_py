@@ -12,10 +12,10 @@ from bottle import template
 # init
 interval = 5
 
-cpu_temp = {"idle": "NULL", "user": "NULL", "system": "NULL", "iowait": "NULL", "total": "NULL"}
-cpu_result = {"cpu_Total": "NULL", "cpu_User": "NULL", "cpu_Sys": "NULL", "cpu_iowait": "NULL"}
-mem_result = {"MemTotal": "NULL", "MemUsage": "NULL", "Buffers": "NULL", "Cached": "NULL", "SwapTotal": "NULL",
-			  "SwapUsage": "NULL", "MemUsage_pct": "NULL", "SwapUsage_pct": "NULL"}
+cpu_temp = {"idle": None, "user": None, "system": None, "iowait": None, "total": None}
+cpu_result = {"cpu_Total": None, "cpu_User": None, "cpu_Sys": None, "cpu_iowait": None}
+mem_result = {"MemTotal": None, "MemUsage": None, "Buffers": None, "Cached": None, "SwapTotal": None,
+			  "SwapUsage": None, "MemUsage_pct": None, "SwapUsage_pct": None}
 
 
 # result page
@@ -96,25 +96,25 @@ def Memory():
 
 def Cpu():
 	Cpu_data = Cpu_Info()
+	# sum
 	idle = float(Cpu_data[4])
 	user = float(Cpu_data[1]) + float(Cpu_data[2])
 	system = float(Cpu_data[3]) + float(Cpu_data[6]) + float(Cpu_data[7])
 	iowait = float(Cpu_data[5])
-	total = float(Cpu_data[1]) + float(Cpu_data[2]) + float(Cpu_data[3])
-
+	total = idle + user + system + iowait
 	global cpu_temp
-	if cpu_temp['idle'] != "NULL":
-		cpu_idle = idle - cpu_temp['idle']
-		cpu_user = user - cpu_temp['user']
-		cpu_system = system - cpu_temp['system']
-		cpu_iowait = iowait - cpu_temp['iowait']
-		cpu_total = cpu_idle + cpu_user + cpu_system + cpu_iowait
-		# cpu_result['idle'] = str("%.3f" %(cpu_idle / cpu_total * 100))
-		cpu_result['cpu_User'] = str("%.3f" % (cpu_user / cpu_total * 100))
-		cpu_result['cpu_Sys'] = str("%.3f" % (cpu_system / cpu_total * 100))
-		cpu_result['cpu_iowait'] = str("%.3f" % (cpu_iowait / cpu_total * 100))
-		cpu_result['cpu_Total'] = str("%.3f" % ((total - cpu_temp['total']) / ((idle + user + system + iowait) - (
-			cpu_temp['idle'] + cpu_temp['user'] + cpu_temp['system'] + cpu_temp['iowait'])) * 100))
+	if cpu_temp['idle'] is not None:
+		cpu_result_temp = dict()
+		global cpu_result
+		cpu_per = total - cpu_temp['total']
+		cpu_result_temp['cpu_User'] = str("%.3f" % ((user - cpu_temp['user']) / cpu_per * 100))
+		cpu_result_temp['cpu_Sys'] = str("%.3f" % ((system - cpu_temp['system']) / cpu_per * 100))
+		cpu_result_temp['cpu_iowait'] = str("%.3f" % ((iowait - cpu_temp['iowait']) / cpu_per * 100))
+		cpu_result_temp['cpu_Total'] = str("%.3f" % ((cpu_per - idle + cpu_temp['idle']) / cpu_per * 100))
+		if float(cpu_result_temp['cpu_Total']) < 0:
+			return None
+		else:
+			cpu_result = cpu_result_temp
 	cpu_temp['idle'] = idle
 	cpu_temp['user'] = user
 	cpu_temp['system'] = system

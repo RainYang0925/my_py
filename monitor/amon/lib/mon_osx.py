@@ -15,7 +15,7 @@ interval = 5
 
 # result page
 def mon_page():
-	cpu_Total = 'NULL'
+	cpu_Total = None
 	# cpu
 	cpu_res = ex_cmd('/usr/sbin/iostat 1 2')
 	if cpu_res != 'error':
