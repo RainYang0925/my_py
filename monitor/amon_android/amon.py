@@ -19,6 +19,9 @@ interval = 5
 port = 8888
 socket.setdefaulttimeout(10)
 
+# check env
+if sys.version_info < (3, 4):
+	raise RuntimeError('At least Python 3.4 is required.')
 pt_name = platform.platform()
 if pt_name.startswith('Windows'):
 	GREP = 'findstr'
