@@ -70,11 +70,11 @@ if selenium_flag is True:
 	selenium_log = cf.get(pt_name, 'selenium_log')
 	ie_driver = cf.get(pt_name, 'webdriver.ie.driver')
 	chrome_driver = cf.get(pt_name, 'webdriver.chrome.driver')
-	sm_start = 'java -jar ' + selenium_cmd + ' -port ' + selenium_port + ' ' + selenium_arg + ' -log ' + selenium_log
+	sm_start = 'java -jar %s -port %s %s -log %s' % (selenium_cmd, selenium_port, selenium_arg, selenium_log)
 	if chrome_driver.strip() != '':
-		sm_start = sm_start + ' -Dwebdriver.chrome.driver=' + chrome_driver
+		sm_start = '%s -Dwebdriver.chrome.driver=%s' % (sm_start, chrome_driver)
 	if ie_driver.strip() != '':
-		sm_start = sm_start + ' -Dwebdriver.ie.driver=' + ie_driver
+		sm_start = '%s -Dwebdriver.ie.driver=%s' % (sm_start, ie_driver)
 	logging.info('start selenium server: %s' % sm_start)
 	ex_cmd2(sm_start)
 
@@ -336,11 +336,10 @@ def install_app():
 					if m:
 						local_udids.append(m.group(1))
 			elif pt_name == 'Mac OS X' and app_path.endswith('ipa'):
-				fh = ex_cmd('instruments -s devices')
+				fh = ex_cmd('idevice_id -l')
 				for line in fh:
-					m = re.search(r'(.+)\s{1}\((\S+)\)\s{1}\[([a-z0-9]+)\]', line)
-					if m:
-						local_udids.append(m.group(3))
+					if len(line) == 40:
+						local_udids.append(line)
 			else:
 				resp['status'] = 500
 				resp['comment'] = 'not support'
@@ -412,12 +411,15 @@ def reset_appium():
 	all_dev = list_devices()['devices']
 	# default appium server port
 	port = appium_port
+	bpport = port + 3
+	chport = port + 6
 	# print port
 	for dev in all_dev:
 		# for dev in range(4):
 		logfile = os.path.join(appium_logpath, 'appium_%d.log' % port)
-		st_cmd = appium_start + ' --port %d --log %s' % (port, logfile) + ' >%s' % os.devnull
-		logging.debug('start appium : ' + st_cmd)
+		st_cmd = '%s --port %d --bootstrap-port %d --chromedriver-port %d --log %s >%s' % (
+			appium_start, port, bpport, chport, logfile, os.devnull)
+		logging.debug('start appium : %s' % st_cmd)
 		ex_cmd2(st_cmd)
 		port += 10
 	# return resp
