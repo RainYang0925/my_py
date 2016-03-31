@@ -411,11 +411,10 @@ def reset_appium():
 	all_dev = list_devices()['devices']
 	# default appium server port
 	port = appium_port
-	bpport = port + 3
-	chport = port + 6
 	# print port
 	for dev in all_dev:
-		# for dev in range(4):
+		bpport = port + 3
+		chport = port + 6
 		logfile = os.path.join(appium_logpath, 'appium_%d.log' % port)
 		st_cmd = '%s --port %d --bootstrap-port %d --chromedriver-port %d --log %s >%s' % (
 			appium_start, port, bpport, chport, logfile, os.devnull)
