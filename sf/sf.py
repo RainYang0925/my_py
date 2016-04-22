@@ -119,16 +119,15 @@ def list_devices():
 	devices = list()
 	# thread start
 	def list_devices_sub(line):
-		# print line
-		# 5T2SQL1563015797       device product:P7-L07 model:HUAWEI_P7_L07 device:hwp7
-		m = re.search(r'(\S+)\s+device.*model:(\S+)', line)
+		m = re.search(r'(\S+)\s+device(.*model:(\S+))?', line)
 		if m:
-			# print m.groups()
 			global devices
 			tps = dict()
 			tps['type'] = 'Android'
 			# udid
-			tps['udid'], tps['model'] = m.groups()
+			tps['udid'], tps['model'] = m.group(1, 3)
+			if tps['model'] is None:
+				tps['model'] = ex_cmd('adb -s %s shell getprop ro.product.model' % tps['udid'])[0]
 			# wm size
 			(wm_name, wm_size) = ('', '')
 			fh2 = ex_cmd('adb -s %s shell wm size' % tps['udid'])
@@ -151,7 +150,7 @@ def list_devices():
 	# thread def end
 	fh = ex_cmd('adb devices -l')
 	thrs = list()
-	for line in fh:
+	for line in fh[1:]:
 		t = threading.Thread(target=list_devices_sub, args=(line,))
 		t.start()
 		thrs.append(t)
@@ -458,6 +457,20 @@ def device_state(udid):
 		else:
 			resp['value'] = 'unknown'
 	logging.info(resp)
+	return resp
+
+
+# 根据udid执行一些命令,only support android
+@app.route('/device/<udid>/cmd/<cmd>', method='GET')
+def device_cmd(udid, cmd):
+	resp = dict()
+	resp['status'] = 0
+	if cmd == 'wakeup':
+		ex_cmd2('adb -s %s shell input keyevent 26' % (udid))
+	elif cmd == 'reboot':
+		ex_cmd2('adb -s %s reboot' % (udid))
+	else:
+		resp['status'] = 404
 	return resp
 
 
