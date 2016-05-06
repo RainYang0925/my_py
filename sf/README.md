@@ -63,7 +63,13 @@ lifeng29@163.com
  	url: http://ip:port/device/<udid>/png/<prop>
 	prop为refresh，则实时刷新，否则使用缓存图片，支持安卓和iOS。
 
-## 9：上传apk和ipa文件 ##
+## 9：执行一些命令,暂只支持Android ##
+ 	查询唤醒和重启设备的命令
+	http方法：get
+ 	url: http://ip:port/device/<udid>/cmd/<cmd>
+	cmd为执行的命令，可为reboot和wakeup。
+	
+## 10：上传apk和ipa文件 ##
  	用于推送apk和ipa文件
 	http方法：get，post
  	url: http://ip:port/upload
@@ -71,8 +77,7 @@ lifeng29@163.com
 	post请求，请把文件放到pkg_data字段中。
 	post请求后，会返回保存的路径和文件的md5值。后续可调用install_app进行apk和ipa的安装。
 
-
-## 10：安装app ##
+## 11：安装app ##
  	http方法：get和post，可安装apk和ipa
  	url: http://ip:port/install_app
 	get方法，为手动的方式，可以通过浏览器页面，点击提交apk。
@@ -82,7 +87,7 @@ lifeng29@163.com
 	package：com.xxx.xxxx
 	udid：可空
 
-## 11：获取selenium的状态信息 ##
+## 12：获取selenium的状态信息 ##
  	获取selenium的端口号，当前运行的capabilities信息
 	http方法：get
  	url: http://ip:port/list_selenium
