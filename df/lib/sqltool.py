@@ -64,6 +64,7 @@ class sqltool():
 	def init_db(self):
 		self.drop_tb('devices')
 		self.drop_tb('appium')
+		self.drop_tb('runner')
 		sql1 = '''CREATE TABLE 'devices' (
 								  'udid' VARCHAR(80) NOT NULL,
 								  'model' varchar(80),
@@ -84,8 +85,19 @@ class sqltool():
 								  'appName' varchar(100),
 								  PRIMARY KEY ('url'))
 				'''
+		sql3 = '''CREATE TABLE 'runner' (
+								  'addr' VARCHAR(200) NOT NULL,
+								   'hostname' varchar(200),
+								   'appium' varchar(200),
+								   'machine' varchar(200),
+								   'selenium' varchar(200),
+								   'platform' varchar(200),
+								   'version' varchar(200),
+								  PRIMARY KEY ('addr'))
+				'''
 		self.exec_sql(sql1)
 		self.exec_sql(sql2)
+		self.exec_sql(sql3)
 
 
 def ref_devices(sqltk, sf_host):
@@ -232,7 +244,9 @@ def ref_appium(sqltk, sf_host):
 	return resp
 
 
-def ref_runner(dbs, sf_host):
+def ref_runner(sqltk, sf_host):
+	global run_list
+	run_list = dict()
 	sf_online = list()
 	# thread start
 	def list_runner_sub(sf_adv):
@@ -240,6 +254,16 @@ def ref_runner(dbs, sf_host):
 		rstmp1 = http_get(url1)
 		if not rstmp1.startswith('error'):
 			sf_online.append(sf_adv)
+			global run_list
+			rstmp2 = json.loads(rstmp1, encoding='utf-8')
+			run_info = dict()
+			run_info['hostname'] = rstmp2['hostname']
+			run_info['appium'] = rstmp2['appium']
+			run_info['machine'] = rstmp2['machine']
+			run_info['selenium'] = rstmp2['selenium']
+			run_info['platform'] = rstmp2['platform']
+			run_info['version'] = rstmp2['version']
+			run_list[sf_adv] = run_info
 
 	# thread def end
 
@@ -250,6 +274,20 @@ def ref_runner(dbs, sf_host):
 		thrs.append(t)
 	for t in thrs:
 		t.join()
+	# sql connect
+	sql = "delete from runner"
+	sqltk.exec_sql(sql)
+	for addr in run_list:
+		info = run_list[addr]
+		hostname = info['hostname']
+		appium = info['appium']
+		machine = info['machine']
+		selenium = info['selenium']
+		platform = info['platform']
+		version = info['version']
+		sql = "insert into runner values ('%s','%s','%s','%s','%s','%s','%s')" % (
+			addr, hostname, appium, machine, selenium, platform, version)
+		sqltk.exec_sql(sql)
 	return sf_online
 
 

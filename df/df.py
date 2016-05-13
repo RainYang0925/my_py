@@ -56,8 +56,14 @@ def status():
 @app.route('/list_runner', method='GET')
 def list_runner():
 	resp = dict()
-	resp['status'] = 0
-	resp['value'] = sf_hosts
+	sql = "select * from runner"
+	res = fetchall(data_file, sql)
+	if res is not None:
+		resp['status'] = 0
+		resp['value'] = res
+	else:
+		resp['status'] = 500
+		resp['value'] = 'ERROR'
 	logging.info(resp)
 	return resp
 
