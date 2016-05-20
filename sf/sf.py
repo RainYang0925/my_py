@@ -463,6 +463,7 @@ def device_state(udid):
 # 根据udid执行一些命令,only support android
 @app.route('/device/<udid>/cmd/<cmd>', method='GET')
 def device_cmd(udid, cmd):
+	logging.debug('run cmd %s on device %s ' % (cmd, udid))
 	resp = dict()
 	resp['status'] = 0
 	if cmd == 'wakeup':
@@ -471,6 +472,7 @@ def device_cmd(udid, cmd):
 		ex_cmd2('adb -s %s reboot' % (udid))
 	else:
 		resp['status'] = 404
+	logging.info(resp)
 	return resp
 
 
