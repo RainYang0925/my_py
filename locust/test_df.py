@@ -21,11 +21,12 @@ def tr1():
 @app.route('/transaction_2', method='POST')
 def tr2():
 	parm1 = request.forms.get('parm1')
-	parm2 = request.forms.get('parm2')
+	parm2 = request.forms.getunicode('parm2')
 	sleep(0.5)
 	resp = dict()
 	resp['status'] = 0
 	resp['value'] = 'yyy'
+	resp['your_input'] = parm2
 	return resp
 
 
