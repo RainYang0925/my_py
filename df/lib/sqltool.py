@@ -87,6 +87,7 @@ class sqltool():
 				'''
 		sql3 = '''CREATE TABLE 'runner' (
 								  'addr' VARCHAR(200) NOT NULL,
+								   'ip' varchar(200),
 								   'hostname' varchar(200),
 								   'appium' varchar(200),
 								   'machine' varchar(200),
@@ -101,7 +102,6 @@ class sqltool():
 
 
 def ref_devices(sqltk, sf_host):
-	global dev_list
 	dev_list = dict()
 	resp = dict()
 	resp['status'] = 0
@@ -112,7 +112,6 @@ def ref_devices(sqltk, sf_host):
 		# print url1
 		rstmp1 = http_get(url1)
 		if not rstmp1.startswith('error'):
-			global dev_list
 			rstmp2 = json.loads(rstmp1, encoding='utf-8')
 			platform = rstmp2['platform']
 			devs = rstmp2['devices']
@@ -184,7 +183,6 @@ def ref_devices(sqltk, sf_host):
 def ref_appium(sqltk, sf_host):
 	resp = dict()
 	resp['status'] = 0
-	global apm_list
 	apm_list = dict()
 	# appium list
 
@@ -193,7 +191,6 @@ def ref_appium(sqltk, sf_host):
 		ip = sf_adv.split(':')[0]
 		rstmp1 = http_get(url1)
 		if not rstmp1.startswith('error'):
-			global apm_list
 			rstmp2 = json.loads(rstmp1, encoding='utf-8')
 			platform = rstmp2['platform']
 			devs = rstmp2['appium']
@@ -245,7 +242,6 @@ def ref_appium(sqltk, sf_host):
 
 
 def ref_runner(sqltk, sf_host):
-	global run_list
 	run_list = dict()
 	sf_online = list()
 	# thread start
@@ -254,9 +250,9 @@ def ref_runner(sqltk, sf_host):
 		rstmp1 = http_get(url1)
 		if not rstmp1.startswith('error'):
 			sf_online.append(sf_adv)
-			global run_list
 			rstmp2 = json.loads(rstmp1, encoding='utf-8')
 			run_info = dict()
+			run_info['ip'] = sf_adv.split(':')[0]
 			run_info['hostname'] = rstmp2['hostname']
 			run_info['appium'] = rstmp2['appium']
 			run_info['machine'] = rstmp2['machine']
@@ -279,14 +275,15 @@ def ref_runner(sqltk, sf_host):
 	sqltk.exec_sql(sql)
 	for addr in run_list:
 		info = run_list[addr]
+		ip = info['ip']
 		hostname = info['hostname']
 		appium = info['appium']
 		machine = info['machine']
 		selenium = info['selenium']
 		platform = info['platform']
 		version = info['version']
-		sql = "insert into runner values ('%s','%s','%s','%s','%s','%s','%s')" % (
-			addr, hostname, appium, machine, selenium, platform, version)
+		sql = "insert into runner values ('%s','%s','%s','%s','%s','%s','%s','%s')" % (
+			addr, ip, hostname, appium, machine, selenium, platform, version)
 		sqltk.exec_sql(sql)
 	return sf_online
 

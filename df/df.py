@@ -32,7 +32,7 @@ for x in sf_host_str.split(','):
 socket.setdefaulttimeout(10)
 logging.basicConfig(level=logging.DEBUG,
 					format='%(asctime)s %(filename)s[line:%(lineno)d][%(funcName)s] %(levelname)s %(message)s',
-					filename=log_path, filemode='a')
+					filename=log_path, filemode='w')
 app = Bottle()
 logging.info('...........................')
 logging.info('df server starting up ...')

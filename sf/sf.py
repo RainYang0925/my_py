@@ -44,7 +44,7 @@ log_path = cf.get('system', 'logfile')
 socket.setdefaulttimeout(10)
 logging.basicConfig(level=logging.DEBUG,
 					format='%(asctime)s %(filename)s[line:%(lineno)d][%(funcName)s] %(levelname)s %(message)s',
-					filename=log_path, filemode='a')
+					filename=log_path, filemode='w')
 app = Bottle()
 logging.info('...........................')
 logging.info('sf server starting up ...')
@@ -115,13 +115,11 @@ def list_devices():
 	if appium_flag is False:
 		logging.info(resp)
 		return resp
-	global devices
 	devices = list()
 	# thread start
 	def list_devices_sub(line):
 		m = re.search(r'(\S+)\s+device(.*model:(\S+))?', line)
 		if m:
-			global devices
 			tps = dict()
 			tps['type'] = 'Android'
 			# udid
@@ -194,7 +192,6 @@ def list_appium():
 			if pid.isdigit():
 				fh2 = ex_cmd('wmic process where handle=%d get commandline' % int(pid))
 				for line2 in fh2:
-					# print 'test', line2
 					m = re.search(r'--port (\d+)', line2)
 					if m:
 						port = m.group(1)
@@ -231,7 +228,6 @@ def list_appium():
 				# tps['cmd'] = line1
 				tps['pid'], tps['port'] = m.groups()
 				port = tps['port']
-				# print m.groups()
 				url = "http://127.0.0.1:%d/wd/hub/status" % int(port)
 				rstmp = http_get(url)
 				if not rstmp.startswith('error'):
@@ -288,15 +284,13 @@ udid: <input name="udid" style="width:500px" type="text" /><br>
 def install_app():
 	app_path = request.forms.get('app_path')
 	package = request.forms.get('package')
-	udid = request.forms.get('udid')
+	udid = request.forms.get('udid').strip()
 	resp = dict()
 	resp['status'] = 0
-	global devices
-	devices = list()
+	devices_res = list()
 
 	# thread start
 	def install_app_sub(ud, package, app_path):
-		global devices
 		flag = "Fail"
 		if app_path.endswith('apk'):
 			ex_cmd('adb -s %s uninstall %s' % (ud, package))
@@ -315,7 +309,7 @@ def install_app():
 		tps = dict()
 		tps['udid'] = ud
 		tps['flag'] = flag
-		devices.append(tps)
+		devices_res.append(tps)
 
 	# thread end
 	logging.debug('#' * 20)
@@ -325,13 +319,11 @@ def install_app():
 	if app_path and package:
 		# print app_path
 		if os.path.exists(app_path):
-			# app_path = app_path.encode('utf-8')
-			# get udid
 			local_udids = list()
 			if app_path.endswith('apk'):
 				fh = ex_cmd('adb devices -l')
-				for line in fh:
-					m = re.search(r'(\S+)\s+device.*model:(\S+)', line)
+				for line in fh[1:]:
+					m = re.search(r'(\S+)\s+device(.*model:(\S+))?', line)
 					if m:
 						local_udids.append(m.group(1))
 			elif pt_name == 'Mac OS X' and app_path.endswith('ipa'):
@@ -345,19 +337,25 @@ def install_app():
 				return resp
 			logging.debug("local devices: %s" % (local_udids))
 
-			# 判断udid的值
-			if udid != '':
-				if udid not in local_udids:
-					resp['status'] = 403
-					resp['comment'] = 'udid device not find'
-					return resp
+			# fix 20160525
+			select_udids = list();
+			for ud in udid.split(','):
+				ud = ud.strip()
+				if ud == '':
+					continue
+				elif ud not in local_udids:
+					tps = dict()
+					tps['udid'] = ud
+					tps['flag'] = 'device not find'
+					devices_res.append(tps)
 				else:
-					local_udids = []
-					local_udids.append(udid)
+					select_udids.append(ud)
+			if udid == '':
+				select_udids = local_udids
 			# 全部安装。
-			# print "install all"
+			# print(select_udids)
 			thrs = list()
-			for ud in local_udids:
+			for ud in select_udids:
 				logging.debug("install app for %s " % ud)
 				t = threading.Thread(target=install_app_sub, args=(ud, package, app_path))
 				t.start()
@@ -365,13 +363,13 @@ def install_app():
 			for t in thrs:
 				t.join()
 
-			resp['result'] = devices
+			resp['result'] = devices_res
 		else:
 			resp['status'] = 404
 			resp['comment'] = 'app_path not exist'
 	else:
 		resp['status'] = 405
-		resp['comment'] = 'apk path or package is null'
+		resp['comment'] = 'app_path or package is null'
 	logging.info(resp)
 	return resp
 
@@ -381,11 +379,9 @@ def install_app():
 def reset_devices():
 	resp = dict()
 	resp['status'] = 0
-	if appium_flag is False:
-		logging.info(resp)
-		return resp
-	ex_cmd('adb kill-server')
-	ex_cmd2('adb start-server')
+	if appium_flag is True:
+		ex_cmd('adb kill-server')
+		ex_cmd2('adb start-server')
 	logging.info(resp)
 	return resp
 
@@ -410,7 +406,6 @@ def reset_appium():
 	all_dev = list_devices()['devices']
 	# default appium server port
 	port = appium_port
-	# print port
 	for dev in all_dev:
 		bpport = port + 3
 		chport = port + 6

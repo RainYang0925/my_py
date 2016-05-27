@@ -83,9 +83,9 @@ lifeng29@163.com
 	get方法，为手动的方式，可以通过浏览器页面，点击提交apk。
 	post方式，直接发送apk的路径信息，可指定apk和udid信息
  	提交的参数：
-	app_path：可使用upload文件返回的路径信息
+	app_path：可使用upload文件返回的路径
 	package：com.xxx.xxxx
-	udid：可空
+	udid：为空表示所有设备，可指定多个，用","隔开
 
 ## 12：获取selenium的状态信息 ##
  	获取selenium的端口号，当前运行的capabilities信息
