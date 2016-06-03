@@ -101,7 +101,7 @@ def list_devices():
 @app.route('/list_appium', method='GET')
 def list_appium():
 	resp = dict()
-	sql = "select * from appium"
+	sql = "select url,platform,version,address from appium"
 	res = fetchall(data_file, sql)
 	if res is not None:
 		resp['status'] = 0
