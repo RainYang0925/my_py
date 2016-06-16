@@ -22,7 +22,7 @@ pt_name = platform.platform()
 if pt_name.startswith('Windows'):
 	pt_name = 'Windows'
 elif pt_name.startswith('Darwin'):
-	pt_name = 'Mac OS X'
+	pt_name = 'macOS'
 else:
 	print("not support on %s" % pt_name)
 	quit()
@@ -156,7 +156,7 @@ def list_devices():
 		t.join()
 
 	# mac
-	if pt_name == 'Mac OS X':
+	if pt_name == 'macOS':
 		fh = ex_cmd('idevice_id -l')
 		for line in fh:
 			if len(line) == 40:
@@ -326,7 +326,7 @@ def install_app():
 					m = re.search(r'(\S+)\s+device(.*model:(\S+))?', line)
 					if m:
 						local_udids.append(m.group(1))
-			elif pt_name == 'Mac OS X' and app_path.endswith('ipa'):
+			elif pt_name == 'macOS' and app_path.endswith('ipa'):
 				fh = ex_cmd('idevice_id -l')
 				for line in fh:
 					if len(line) == 40:
@@ -387,34 +387,50 @@ def reset_devices():
 
 
 # 刷新appium，根据已经连接的设备，重新启动对应数量的appium
-@app.route('/reset_appium', method='GET')
-def reset_appium():
+@app.route('/reset_appium/<cmd>', method='GET')
+def reset_appium(cmd):
 	resp = dict()
 	resp['status'] = 0
 	if appium_flag is False:
 		logging.info(resp)
 		return resp
 	all_apm = list_appium()['appium']
-	for ap in all_apm:
-		pid = int(ap['pid'])
-		logging.debug('stop appium pid : %d ' % pid)
-		if pt_name == 'Windows':
-			ex_cmd('taskkill /T /F /PID %d' % pid)
-		else:
-			ex_cmd('kill -9 %d' % pid)
-	# start appium
 	all_dev = list_devices()['devices']
-	# default appium server port
 	port = appium_port
-	for dev in all_dev:
-		bpport = port + 3
-		chport = port + 6
-		logfile = os.path.join(appium_logpath, 'appium_%d.log' % port)
-		st_cmd = '%s --port %d --bootstrap-port %d --chromedriver-port %d --log %s >%s' % (
-			appium_start, port, bpport, chport, logfile, os.devnull)
-		logging.debug('start appium : %s' % st_cmd)
-		ex_cmd2(st_cmd)
-		port += 10
+	# reboot appium
+	if cmd == 'reboot':
+		for ap in all_apm:
+			pid = int(ap['pid'])
+			logging.debug('stop appium pid : %d ' % pid)
+			if pt_name == 'Windows':
+				ex_cmd2('taskkill /T /F /PID %d' % pid)
+			else:
+				ex_cmd2('kill -9 %d' % pid)
+		# start appium
+		# default appium server port
+		for dev in all_dev:
+			bpport = port + 3
+			chport = port + 6
+			logfile = os.path.join(appium_logpath, 'appium_%d.log' % port)
+			st_cmd = '%s --port %d --bootstrap-port %d --chromedriver-port %d --log %s >%s' % (
+				appium_start, port, bpport, chport, logfile, os.devnull)
+			logging.debug('start appium : %s' % st_cmd)
+			ex_cmd2(st_cmd)
+			port += 10
+	# start new appium
+	else:
+		ct = len(all_dev) - len(all_apm)
+		port = port + len(all_apm) * 10
+		while ct > 0:
+			bpport = port + 3
+			chport = port + 6
+			logfile = os.path.join(appium_logpath, 'appium_%d.log' % port)
+			st_cmd = '%s --port %d --bootstrap-port %d --chromedriver-port %d --log %s >%s' % (
+				appium_start, port, bpport, chport, logfile, os.devnull)
+			logging.debug('start appium : %s' % st_cmd)
+			ex_cmd2(st_cmd)
+			port += 10
+			ct -= 1
 	# return resp
 	logging.info(resp)
 	return resp
@@ -429,7 +445,7 @@ def device_state(udid):
 		logging.info(resp)
 		return resp
 	if len(udid) == 40:
-		if pt_name == 'Mac OS X':
+		if pt_name == 'macOS':
 			res = ex_cmd('idevicename -u %s' % udid)
 		else:
 			res = 'ERROR: ideviceinfo not support on other os'
@@ -481,7 +497,7 @@ def device_info(udid, prop):
 		return resp
 	resp['prop'] = prop
 	if len(udid) == 40:
-		if pt_name == 'Mac OS X':
+		if pt_name == 'macOS':
 			res = ex_cmd('ideviceinfo -u %s -k %s' % (udid, prop))
 		else:
 			res = 'error: ideviceinfo not support on other os'
@@ -507,7 +523,7 @@ def device_png(udid, prop):
 		logging.debug('use old png file: %s.png' % fname)
 	else:
 		if len(udid) == 40:
-			if pt_name == 'Mac OS X':
+			if pt_name == 'macOS':
 				ex_cmd('idevicescreenshot -u %s %s.tiff' % (udid, fname))
 				ex_cmd('sips -s format png %s.tiff --out %s.png' % (fname, fname))
 			else:
@@ -516,7 +532,7 @@ def device_png(udid, prop):
 				return res
 		# android support
 		else:
-			# if pt_name == 'Mac OS X':
+			# if pt_name == 'macOS':
 			#	ex_cmd("adb -s %s shell screencap -p |perl -pe 's/\\x0D\\x0A/\\x0A/g' > %s.png" % (udid, fname))
 			# else:
 			ex_cmd('adb -s %s shell screencap -p /sdcard/screenshot.png' % udid)

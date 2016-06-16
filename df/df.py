@@ -52,7 +52,7 @@ def status():
 	return resp
 
 
-# 获取执行机
+# 获取执行机,可定时刷新
 @app.route('/list_runner', method='GET')
 def list_runner():
 	resp = dict()
@@ -81,7 +81,7 @@ def list_runner_ip(ip):
 	return resp
 
 
-# 列出所有的移动设备
+# 列出所有的移动设备，可定时刷新
 @app.route('/list_devices', method='GET')
 def list_devices():
 	resp = dict()
@@ -97,7 +97,7 @@ def list_devices():
 	return resp
 
 
-# 列出所有的appium
+# 列出所有的appium，可定时刷新
 @app.route('/list_appium', method='GET')
 def list_appium():
 	resp = dict()
@@ -132,11 +132,11 @@ def reset_devices():
 	return resp
 
 
-# 刷新appium，根据已经连接的设备，重新启动对应数量的appium
+# 刷新appium，根据已经连接的设备，重新启动对应数量的appium，手动操作
 @app.route('/reset_appium', method='GET')
 def reset_appium():
 	def reset_appium_sub(sf_adv):
-		url1 = "http://%s/reset_appium" % sf_adv
+		url1 = "http://%s/reset_appium/reboot" % sf_adv
 		http_get(url1)
 
 	thrs = list()

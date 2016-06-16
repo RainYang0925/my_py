@@ -288,11 +288,18 @@ def ref_runner(sqltk, sf_host):
 	return sf_online
 
 
+def ref_appium_add(sf_host):
+	for sf_adv in sf_host:
+		url1 = "http://%s/reset_appium/add" % sf_adv
+		http_get(url1)
+
+
 def ref_info(data_file, sf_host):
 	dbs = sqltool(data_file)
 	dbs.init_db()
 	while True:
 		sf_host_alive = ref_runner(dbs, sf_host)
+		ref_appium_add(sf_host_alive)
 		ref_devices(dbs, sf_host_alive)
 		ref_appium(dbs, sf_host_alive)
 		sleep(10)
