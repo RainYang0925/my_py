@@ -13,7 +13,7 @@ import socket
 import uuid
 from configparser import ConfigParser
 from lib import *
-
+from prep import ins
 
 # check env
 if sys.version_info < (3, 4):
@@ -21,8 +21,10 @@ if sys.version_info < (3, 4):
 pt_name = platform.platform()
 if pt_name.startswith('Windows'):
 	pt_name = 'Windows'
+	sfind = 'findstr'
 elif pt_name.startswith('Darwin'):
 	pt_name = 'macOS'
+	sfind = 'grep'
 else:
 	print("not support on %s" % pt_name)
 	quit()
@@ -127,19 +129,14 @@ def list_devices():
 			if tps['model'] is None:
 				tps['model'] = ex_cmd('adb -s %s shell getprop ro.product.model' % tps['udid'])[0]
 			# wm size
-			(wm_name, wm_size) = ('', '')
-			fh2 = ex_cmd('adb -s %s shell wm size' % tps['udid'])
-			try:
-				wm_name, wm_size = fh2[0].split(':')
-				wm_size = wm_size.strip()
-			except Exception as ex:
-				logging.debug("adb shell error on udid %s: wm size error:%s" % (tps['udid'], fh2))
-				wm_size = ''
-			if wm_name == 'Physical size':
-				tps['screen size'] = wm_size
+			fh2 = ex_cmd('adb -s %s shell dumpsys display|%s mDefaultViewport' % (tps['udid'], sfind))
+			n = re.search(r'deviceWidth=(\d+),\s+deviceHeight=(\d+)', fh2[0])
+			if n:
+				width, height = n.group(1, 2)
+				tps['screen size'] = '%sx%s' % (height, width)
 			else:
-				logging.debug("adb shell error on udid %s: wm size error:%s" % (tps['udid'], fh2))
 				tps['screen size'] = ''
+				logging.debug("adb shell error on udid %s: dumpsys display|%s mDefaultViewport" % (tps['udid'], sfind))
 			# android version
 			fh3 = ex_cmd('adb -s %s shell getprop ro.build.version.release' % tps['udid'])
 			tps['version'] = fh3[0]
@@ -519,26 +516,34 @@ def device_info(udid, prop):
 @app.route('/device/<udid>/png/<prop>', method='GET')
 def device_png(udid, prop):
 	fname = os.path.join(static_path, udid)
-	if prop != 'refresh' and os.path.exists('%s.png' % fname):
-		logging.debug('use old png file: %s.png' % fname)
-	else:
+	if prop == 'refresh':
+		# iOS support
 		if len(udid) == 40:
 			if pt_name == 'macOS':
 				ex_cmd('idevicescreenshot -u %s %s.tiff' % (udid, fname))
 				ex_cmd('sips -s format png %s.tiff --out %s.png' % (fname, fname))
 			else:
-				res = 'error: not support idevice on other os'
-				logging.info(res)
-				return res
+				logging.debug('error: not support idevicescreenshot on other os')
+				return static_file(filename='404.png', root=static_path, mimetype='image/png')
 		# android support
 		else:
-			# if pt_name == 'macOS':
-			#	ex_cmd("adb -s %s shell screencap -p |perl -pe 's/\\x0D\\x0A/\\x0A/g' > %s.png" % (udid, fname))
-			# else:
+			res1 = ex_cmd('adb -s %s shell sh /data/local/tmp/cap.sh' % udid)
+			if res1[0].startswith('PID'):
+				res2 = ex_cmd('adb -s %s pull /data/local/tmp/tmpscreen.jpg %s.jpg' % (udid, fname))
+				if len(res2) == 0 or not res2[0].startswith('remote'):
+					if os.path.exists('%s.jpg' % fname) and os.path.getsize('%s.jpg' % fname) > 0:
+						logging.debug('minicap get new img file: %s.jpg' % fname)
+						return static_file(filename='%s.jpg' % udid, root=static_path, mimetype='image/jpg')
 			ex_cmd('adb -s %s shell screencap -p /sdcard/screenshot.png' % udid)
 			ex_cmd('adb -s %s pull /sdcard/screenshot.png %s.png' % (udid, fname))
-		logging.debug('get new png file: %s.png' % fname)
-	if os.path.exists('%s.png' % fname):
+			logging.debug('screencap get new img file: %s.png' % fname)
+			return static_file(filename='%s.png' % udid, root=static_path, mimetype='image/png')
+	else:
+		logging.debug('use old image file: %s' % fname)
+	# use old file
+	if os.path.exists('%s.jpg' % fname) and os.path.getsize('%s.jpg' % fname) > 0:
+		return static_file(filename='%s.jpg' % udid, root=static_path, mimetype='image/jpg')
+	elif os.path.exists('%s.png' % fname) and os.path.getsize('%s.png' % fname) > 0:
 		return static_file(filename='%s.png' % udid, root=static_path, mimetype='image/png')
 	else:
 		logging.debug('get 404 png file: %s' % os.path.join(static_path, '404.png'))
@@ -602,5 +607,18 @@ def list_selenium():
 	logging.info(resp)
 	return resp
 
+
+# 为指定设备安装minicap等程序
+@app.route('/install_minix/<udid>', method='GET')
+def install_minix(udid):
+	resp = dict()
+	resp['status'] = 0
+	ins(udid)
+	logging.info('install minix for device : %s' % udid)
+	return resp
+
+
+reset_devices()
+reset_appium('reboot')
 
 run(app=app, server='cherrypy', host='0.0.0.0', port=port, reloader=False, debug=True)

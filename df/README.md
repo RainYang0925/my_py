@@ -8,8 +8,8 @@ lifeng29@163.com
 ##安装方法：##
 
 1. 系统需求: Windows或mac os x，Python3.4及以上版本；
-2. Python依赖包：CherryPy，请使用pip install CherryPy 来安装；
-3. 在config.ini中按照运行环境信息修改配置信息；
+2. Python依赖包：CherryPy，请使用pip install CherryPy在线安装或pip install CherryPy-4.0.0-py3-none-any.whl离线安装；
+3. 在config.ini中按照运行环境信息修改配置信息，配置各个sf服务器的ip和端口；
 4. Windows通过bat执行，mac通过sh文件执行。
 
 ## 主要功能 ##
@@ -60,4 +60,4 @@ lifeng29@163.com
 
 	
 # 其他 #
-	可根据需要增加接口。。。
+	可根据需要增加其他接口。

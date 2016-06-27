@@ -1,6 +1,6 @@
 # 说明 #
 
-版本：3.0 20160317
+版本：3.1 20160617
 
 lifeng29@163.com
 
@@ -9,10 +9,11 @@ lifeng29@163.com
 
 1. 系统需求: Windows或mac os x，Python3.4及以上版本；
 2. 需安装配置好java，appium，安卓SDK环境；
-3. Python依赖包：CherryPy，请使用pip install CherryPy 来安装；
-4. mac中支持iOS设备的第三方运行环境，使用brew install --HEAD ideviceinstaller 进行安装（需翻墙）；
-5. 在config.ini中按照运行环境信息修改配置信息；
-6. Windows通过bat执行，mac通过sh文件执行。
+3. Python依赖包：CherryPy，请使用pip install CherryPy在线安装或pip install CherryPy-4.0.0-py3-none-any.whl离线安装；
+4. mac中支持iOS设备的第三方运行环境，使用brew install --HEAD ideviceinstaller 进行安装（需翻墙）；（可选）
+5. 对于新加入安卓的设备，支持minicap截图，如需使用，需要推送安装相关lib文件，请使用/install_minix/<udid>来推送；（可选）
+6. 在config.ini中按照运行环境信息修改配置信息；
+7. Windows通过bat执行，mac通过sh文件执行。
 
 ## 主要功能 ##
 提供json wire protocol形式的接口，用于管理selenium, appium和安卓、iOS移动设备。
@@ -44,7 +45,9 @@ lifeng29@163.com
 	默认从4723开始，后续为4733，4743...
 	用于并发执行
 	http方法：get
- 	url: http://ip:port/reset_appium
+ 	url: http://ip:port/reset_appium/<xx>
+ 	xx: 为reboot时会杀掉所有的appium进程，重启相应数量的appium
+ 	xx为其他值时，只是根据设备数量，若appium数量不够，则增加新的appium进程
 
 ## 6：获取设备在线状态 ##
  	查询设备是否在线。
@@ -92,6 +95,10 @@ lifeng29@163.com
 	http方法：get
  	url: http://ip:port/list_selenium
 
+## 13：为设备推送相应的minix文件 ##
+ 	http方法：get
+ 	url: http://ip:port/install_minix/<udid>
+ 	udid 为设备的udid
 
 # 其他 #
-	目前完成了后端接口的开发，还需要有好的前端进行调用。。。
+	sf部署在连接设备的机器上，由一个df服务进行调用。
