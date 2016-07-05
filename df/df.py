@@ -7,6 +7,7 @@ __license__ = 'copy left'
 
 import codecs
 import logging
+from logging.handlers import RotatingFileHandler
 import socket
 from configparser import ConfigParser
 from lib import *
@@ -30,12 +31,16 @@ for x in sf_host_str.split(','):
 
 # init
 socket.setdefaulttimeout(10)
-logging.basicConfig(level=logging.DEBUG,
-					format='%(asctime)s %(filename)s[line:%(lineno)d][%(funcName)s] %(levelname)s %(message)s',
-					filename=log_path, filemode='w')
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+handler = RotatingFileHandler(log_path, mode='a', maxBytes=10 * 1000 * 1000, backupCount=1)
+formatter = logging.Formatter('%(asctime)s %(filename)s[line:%(lineno)d][%(funcName)s] %(levelname)s %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
 app = Bottle()
-logging.info('...........................')
-logging.info('df server starting up ...')
+logger.info('...........................')
+logger.info('df server starting up ...')
 
 t1 = threading.Thread(target=ref_info, args=(data_file, sf_hosts))
 t1.setDaemon(True)
@@ -48,7 +53,7 @@ def status():
 	resp = dict()
 	resp['status'] = 0
 	resp['version'] = '3.0'
-	logging.info(resp)
+	logger.info(resp)
 	return resp
 
 
@@ -64,7 +69,7 @@ def list_runner():
 	else:
 		resp['status'] = 500
 		resp['value'] = 'ERROR'
-	logging.info(resp)
+	logger.info(resp)
 	return resp
 
 
@@ -77,7 +82,7 @@ def list_runner_ip(ip):
 	resp = dict()
 	resp['status'] = 500
 	resp['value'] = 'host not find'
-	logging.info(resp)
+	logger.info(resp)
 	return resp
 
 
@@ -93,7 +98,7 @@ def list_devices():
 	else:
 		resp['status'] = 500
 		resp['value'] = 'ERROR'
-	logging.info(resp)
+	logger.info(resp)
 	return resp
 
 
@@ -109,7 +114,7 @@ def list_appium():
 	else:
 		resp['status'] = 500
 		resp['value'] = 'ERROR'
-	logging.info(resp)
+	logger.info(resp)
 	return resp
 
 

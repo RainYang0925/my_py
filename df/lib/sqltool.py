@@ -17,6 +17,7 @@ class sqltool():
 	def __init__(self, path):
 		self.conn = sqlite3.connect(path, timeout=3)
 		self.dbpath = path
+		self.logger = logging.getLogger('main.sqltool')
 
 	def get_cursor(self):
 		if self.conn is not None:
@@ -32,7 +33,7 @@ class sqltool():
 			cu.execute(sql)
 			self.conn.commit()
 		except Exception as ex:
-			logging.debug("drop table %s error:%s" % (table, ex))
+			self.logger.debug("drop table %s error:%s" % (table, ex))
 
 	def exec_sql(self, sql):
 		if sql is not None and sql != '':
@@ -41,9 +42,9 @@ class sqltool():
 				cu.execute(sql)
 				self.conn.commit()
 			except Exception as ex:
-				logging.debug("exec sql:%s error:%s" % (sql, ex))
+				self.logger.debug("exec sql:%s error:%s" % (sql, ex))
 		else:
-			logging.debug("exec sql error: %s" % sql)
+			self.logger.debug("exec sql error: %s" % sql)
 
 	def exec_query(self, sql):
 		try:
@@ -58,7 +59,7 @@ class sqltool():
 				resp.append(row)
 			return resp
 		except Exception as ex:
-			logging.debug("exec_query sql:%s error:%s" % (sql, ex))
+			self.logger.debug("exec_query sql:%s error:%s" % (sql, ex))
 			return None
 
 	def init_db(self):

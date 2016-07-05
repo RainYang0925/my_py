@@ -8,6 +8,7 @@ __license__ = 'copy left'
 import json
 import codecs
 import logging
+from logging.handlers import RotatingFileHandler
 import platform
 import socket
 import uuid
@@ -44,12 +45,16 @@ log_path = cf.get('system', 'logfile')
 
 # init
 socket.setdefaulttimeout(10)
-logging.basicConfig(level=logging.DEBUG,
-					format='%(asctime)s %(filename)s[line:%(lineno)d][%(funcName)s] %(levelname)s %(message)s',
-					filename=log_path, filemode='w')
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+handler = RotatingFileHandler(log_path, mode='a', maxBytes=10 * 1000 * 1000, backupCount=1)
+formatter = logging.Formatter('%(asctime)s %(filename)s[line:%(lineno)d][%(funcName)s] %(levelname)s %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
 app = Bottle()
-logging.info('...........................')
-logging.info('sf server starting up ...')
+logger.info('...........................')
+logger.info('sf server starting up ...')
 
 pt_system = platform.system()
 pt_node = platform.node()
@@ -77,7 +82,7 @@ if selenium_flag is True:
 		sm_start = '%s -Dwebdriver.chrome.driver=%s' % (sm_start, chrome_driver)
 	if ie_driver.strip() != '':
 		sm_start = '%s -Dwebdriver.ie.driver=%s' % (sm_start, ie_driver)
-	logging.info('start selenium server: %s' % sm_start)
+	logger.info('start selenium server: %s' % sm_start)
 	ex_cmd2(sm_start)
 
 
@@ -92,7 +97,7 @@ def status():
 	resp['machine'] = pt_machine
 	resp['appium'] = appium_flag
 	resp['selenium'] = selenium_flag
-	logging.info(resp)
+	logger.info(resp)
 	return resp
 
 
@@ -115,7 +120,7 @@ def list_devices():
 	resp['status'] = 0
 	resp['platform'] = pt_name
 	if appium_flag is False:
-		logging.info(resp)
+		logger.info(resp)
 		return resp
 	devices = list()
 	# thread start
@@ -136,7 +141,7 @@ def list_devices():
 				tps['screen size'] = '%sx%s' % (height, width)
 			else:
 				tps['screen size'] = ''
-				logging.debug("adb shell error on udid %s: dumpsys display|%s mDefaultViewport" % (tps['udid'], sfind))
+				logger.debug("adb shell error on udid %s: dumpsys display|%s mDefaultViewport" % (tps['udid'], sfind))
 			# android version
 			fh3 = ex_cmd('adb -s %s shell getprop ro.build.version.release' % tps['udid'])
 			tps['version'] = fh3[0]
@@ -168,7 +173,7 @@ def list_devices():
 						tps['version'] = line2.split()[1]
 				devices.append(tps)
 	resp['devices'] = devices
-	logging.info(resp)
+	logger.info(resp)
 	return resp
 
 
@@ -179,7 +184,7 @@ def list_appium():
 	resp['status'] = 0
 	resp['platform'] = pt_name
 	if appium_flag is False:
-		logging.info(resp)
+		logger.info(resp)
 		return resp
 	appium = list()
 	if pt_name == 'Windows':
@@ -211,8 +216,8 @@ def list_appium():
 									tps['udid'] = rstmp2['value']['deviceName']
 									tps['app'] = rstmp2['value']['appPackage']
 									tps['phone_type'] = rstmp2['value']['platformName']
-								logging.info(rstmp2)
-						logging.info(rstmp)
+								logger.info(rstmp2)
+						logger.info(rstmp)
 						appium.append(tps)
 
 	# mac
@@ -246,11 +251,11 @@ def list_appium():
 								tps['udid'] = rstmp2['value']['udid']
 							else:
 								tps['udid'] = ''
-						logging.info(rstmp2)
-				logging.info(rstmp)
+						logger.info(rstmp2)
+				logger.info(rstmp)
 				appium.append(tps)
 	resp['appium'] = appium
-	logging.info(resp)
+	logger.info(resp)
 	return resp
 
 
@@ -309,10 +314,10 @@ def install_app():
 		devices_res.append(tps)
 
 	# thread end
-	logging.debug('#' * 20)
-	logging.debug('install debug message:')
-	logging.debug("udid: %s, package: %s, app_path: %s" % (udid, package, app_path))
-	logging.debug('#' * 20)
+	logger.debug('#' * 20)
+	logger.debug('install debug message:')
+	logger.debug("udid: %s, package: %s, app_path: %s" % (udid, package, app_path))
+	logger.debug('#' * 20)
 	if app_path and package:
 		# print app_path
 		if os.path.exists(app_path):
@@ -332,7 +337,7 @@ def install_app():
 				resp['status'] = 500
 				resp['comment'] = 'not support'
 				return resp
-			logging.debug("local devices: %s" % (local_udids))
+			logger.debug("local devices: %s" % (local_udids))
 
 			# fix 20160525
 			select_udids = list();
@@ -353,7 +358,7 @@ def install_app():
 			# print(select_udids)
 			thrs = list()
 			for ud in select_udids:
-				logging.debug("install app for %s " % ud)
+				logger.debug("install app for %s " % ud)
 				t = threading.Thread(target=install_app_sub, args=(ud, package, app_path))
 				t.start()
 				thrs.append(t)
@@ -367,7 +372,7 @@ def install_app():
 	else:
 		resp['status'] = 405
 		resp['comment'] = 'app_path or package is null'
-	logging.info(resp)
+	logger.info(resp)
 	return resp
 
 
@@ -379,7 +384,7 @@ def reset_devices():
 	if appium_flag is True:
 		ex_cmd('adb kill-server')
 		ex_cmd2('adb start-server')
-	logging.info(resp)
+	logger.info(resp)
 	return resp
 
 
@@ -389,7 +394,7 @@ def reset_appium(cmd):
 	resp = dict()
 	resp['status'] = 0
 	if appium_flag is False:
-		logging.info(resp)
+		logger.info(resp)
 		return resp
 	all_apm = list_appium()['appium']
 	all_dev = list_devices()['devices']
@@ -398,7 +403,7 @@ def reset_appium(cmd):
 	if cmd == 'reboot':
 		for ap in all_apm:
 			pid = int(ap['pid'])
-			logging.debug('stop appium pid : %d ' % pid)
+			logger.debug('stop appium pid : %d ' % pid)
 			if pt_name == 'Windows':
 				ex_cmd2('taskkill /T /F /PID %d' % pid)
 			else:
@@ -411,7 +416,7 @@ def reset_appium(cmd):
 			logfile = os.path.join(appium_logpath, 'appium_%d.log' % port)
 			st_cmd = '%s --port %d --bootstrap-port %d --chromedriver-port %d --log %s >%s' % (
 				appium_start, port, bpport, chport, logfile, os.devnull)
-			logging.debug('start appium : %s' % st_cmd)
+			logger.debug('start appium : %s' % st_cmd)
 			ex_cmd2(st_cmd)
 			port += 10
 	# start new appium
@@ -424,12 +429,12 @@ def reset_appium(cmd):
 			logfile = os.path.join(appium_logpath, 'appium_%d.log' % port)
 			st_cmd = '%s --port %d --bootstrap-port %d --chromedriver-port %d --log %s >%s' % (
 				appium_start, port, bpport, chport, logfile, os.devnull)
-			logging.debug('start appium : %s' % st_cmd)
+			logger.debug('start appium : %s' % st_cmd)
 			ex_cmd2(st_cmd)
 			port += 10
 			ct -= 1
 	# return resp
-	logging.info(resp)
+	logger.info(resp)
 	return resp
 
 
@@ -439,7 +444,7 @@ def device_state(udid):
 	resp = dict()
 	resp['status'] = 0
 	if appium_flag is False:
-		logging.info(resp)
+		logger.info(resp)
 		return resp
 	if len(udid) == 40:
 		if pt_name == 'macOS':
@@ -464,14 +469,14 @@ def device_state(udid):
 				resp['value'] = 'offline'
 		else:
 			resp['value'] = 'unknown'
-	logging.info(resp)
+	logger.info(resp)
 	return resp
 
 
 # 根据udid执行一些命令,only support android
 @app.route('/device/<udid>/cmd/<cmd>', method='GET')
 def device_cmd(udid, cmd):
-	logging.debug('run cmd %s on device %s ' % (cmd, udid))
+	logger.debug('run cmd %s on device %s ' % (cmd, udid))
 	resp = dict()
 	resp['status'] = 0
 	if cmd == 'wakeup':
@@ -480,7 +485,7 @@ def device_cmd(udid, cmd):
 		ex_cmd2('adb -s %s reboot' % (udid))
 	else:
 		resp['status'] = 404
-	logging.info(resp)
+	logger.info(resp)
 	return resp
 
 
@@ -490,7 +495,7 @@ def device_info(udid, prop):
 	resp = dict()
 	resp['status'] = 0
 	if appium_flag is False:
-		logging.info(resp)
+		logger.info(resp)
 		return resp
 	resp['prop'] = prop
 	if len(udid) == 40:
@@ -508,7 +513,7 @@ def device_info(udid, prop):
 		if res.startswith('error'):
 			resp['status'] = 500
 	resp['value'] = res
-	logging.info(resp)
+	logger.info(resp)
 	return resp
 
 
@@ -523,7 +528,7 @@ def device_png(udid, prop):
 				ex_cmd('idevicescreenshot -u %s %s.tiff' % (udid, fname))
 				ex_cmd('sips -s format png %s.tiff --out %s.png' % (fname, fname))
 			else:
-				logging.debug('error: not support idevicescreenshot on other os')
+				logger.debug('error: not support idevicescreenshot on other os')
 				return static_file(filename='404.png', root=static_path, mimetype='image/png')
 		# android support
 		else:
@@ -532,21 +537,21 @@ def device_png(udid, prop):
 				res2 = ex_cmd('adb -s %s pull /data/local/tmp/tmpscreen.jpg %s.jpg' % (udid, fname))
 				if len(res2) == 0 or not res2[0].startswith('remote'):
 					if os.path.exists('%s.jpg' % fname) and os.path.getsize('%s.jpg' % fname) > 0:
-						logging.debug('minicap get new img file: %s.jpg' % fname)
+						logger.debug('minicap get new img file: %s.jpg' % fname)
 						return static_file(filename='%s.jpg' % udid, root=static_path, mimetype='image/jpg')
 			ex_cmd('adb -s %s shell screencap -p /sdcard/screenshot.png' % udid)
 			ex_cmd('adb -s %s pull /sdcard/screenshot.png %s.png' % (udid, fname))
-			logging.debug('screencap get new img file: %s.png' % fname)
+			logger.debug('screencap get new img file: %s.png' % fname)
 			return static_file(filename='%s.png' % udid, root=static_path, mimetype='image/png')
 	else:
-		logging.debug('use old image file: %s' % fname)
+		logger.debug('use old image file: %s' % fname)
 	# use old file
 	if os.path.exists('%s.jpg' % fname) and os.path.getsize('%s.jpg' % fname) > 0:
 		return static_file(filename='%s.jpg' % udid, root=static_path, mimetype='image/jpg')
 	elif os.path.exists('%s.png' % fname) and os.path.getsize('%s.png' % fname) > 0:
 		return static_file(filename='%s.png' % udid, root=static_path, mimetype='image/png')
 	else:
-		logging.debug('get 404 png file: %s' % os.path.join(static_path, '404.png'))
+		logger.debug('get 404 png file: %s' % os.path.join(static_path, '404.png'))
 		return static_file(filename='404.png', root=static_path, mimetype='image/png')
 
 
@@ -584,11 +589,11 @@ def do_upload():
 	save_file_name = os.path.join(upload_path, str(uuid.uuid1()) + ext)
 	uploadfile.save(save_file_name, overwrite=True)
 	md5_value = file_md5(save_file_name)
-	logging.debug("upload success,save_path:%s,md5_value:%s" % (save_file_name, md5_value))
+	logger.debug("upload success,save_path:%s,md5_value:%s" % (save_file_name, md5_value))
 	resp['status'] = 0
 	resp['save_path'] = save_file_name
 	resp['md5_value'] = md5_value
-	logging.info(resp)
+	logger.info(resp)
 	return resp
 
 
@@ -604,7 +609,7 @@ def list_selenium():
 			rstmp2 = json.loads(rstmp, encoding='utf-8')
 			resp['selenium_port'] = selenium_port
 			resp['value'] = rstmp2['value']
-	logging.info(resp)
+	logger.info(resp)
 	return resp
 
 
@@ -614,7 +619,7 @@ def install_minix(udid):
 	resp = dict()
 	resp['status'] = 0
 	ins(udid)
-	logging.info('install minix for device : %s' % udid)
+	logger.info('install minix for device : %s' % udid)
 	return resp
 
 

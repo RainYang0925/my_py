@@ -35,7 +35,7 @@ def sms(ph):
 	try:
 		opener.open(req2, timeout=5)
 	except Exception as ex:
-		logging.debug("login %s error:%s" % (url2, ex))
+		logger.debug("login %s error:%s" % (url2, ex))
 		resp['status'] = 500
 		resp['value'] = 'ERROR'
 		return (resp)
@@ -58,7 +58,7 @@ def sms(ph):
 	try:
 		response = opener.open(req3, timeout=5)
 	except Exception as ex:
-		logging.debug("search sms error:%s" % ex)
+		logger.debug("search sms error:%s" % ex)
 		resp['status'] = 500
 		resp['value'] = 'ERROR'
 		return (resp)
@@ -69,11 +69,11 @@ def sms(ph):
 	if m:
 		resp['status'] = 0
 		resp['value'] = m.group(1)
-		logging.debug("phone: %s ,sms:%s" % (ph, resp['value']))
+		logger.debug("phone: %s ,sms:%s" % (ph, resp['value']))
 	else:
 		resp['status'] = 500
 		resp['value'] = 'ERROR'
-		logging.debug("phone: %s ,sms not find" % ph)
+		logger.debug("phone: %s ,sms not find" % ph)
 	return resp
 
 
