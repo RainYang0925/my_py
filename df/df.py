@@ -30,7 +30,7 @@ for x in sf_host_str.split(','):
 	sf_hosts.append(x.strip())
 
 # init
-socket.setdefaulttimeout(10)
+socket.setdefaulttimeout(30)
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 handler = RotatingFileHandler(log_path, mode='a', maxBytes=10 * 1000 * 1000, backupCount=1)

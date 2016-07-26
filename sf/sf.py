@@ -41,6 +41,7 @@ upload_path = cf.get('system', 'upload_dir')
 selenium_flag = cf.getboolean('system', 'selenium')
 appium_flag = cf.getboolean('system', 'appium')
 log_path = cf.get('system', 'logfile')
+device_ginfo = dict()
 
 
 # init
@@ -123,6 +124,7 @@ def list_devices():
 		logger.info(resp)
 		return resp
 	devices = list()
+	global device_ginfo
 	# thread start
 	def list_devices_sub(line):
 		m = re.search(r'(\S+)\s+device(.*model:(\S+))?', line)
@@ -131,20 +133,36 @@ def list_devices():
 			tps['type'] = 'Android'
 			# udid
 			tps['udid'], tps['model'] = m.group(1, 3)
-			if tps['model'] is None:
-				tps['model'] = ex_cmd('adb -s %s shell getprop ro.product.model' % tps['udid'])[0]
-			# wm size
-			fh2 = ex_cmd('adb -s %s shell dumpsys display|%s mDefaultViewport' % (tps['udid'], sfind))
-			n = re.search(r'deviceWidth=(\d+),\s+deviceHeight=(\d+)', fh2[0])
-			if n:
-				width, height = n.group(1, 2)
-				tps['screen size'] = '%sx%s' % (height, width)
+			# 判断是否在缓存中
+			if tps['udid'] in device_ginfo:
+				tps = device_ginfo[tps['udid']]
 			else:
-				tps['screen size'] = ''
-				logger.debug("adb shell error on udid %s: dumpsys display|%s mDefaultViewport" % (tps['udid'], sfind))
-			# android version
-			fh3 = ex_cmd('adb -s %s shell getprop ro.build.version.release' % tps['udid'])
-			tps['version'] = fh3[0]
+				if tps['model'] is None:
+					fh1 = ex_cmd('adb -s %s shell getprop ro.product.model' % tps['udid'])[0]
+					if fh1.startswith('error'):
+						return None
+					else:
+						tps['model'] = fh1
+				# wm size
+				fh2 = ex_cmd('adb -s %s shell dumpsys display|%s mDefaultViewport' % (tps['udid'], sfind))[0]
+				if fh2.startswith('error'):
+					return None
+				else:
+					n = re.search(r'deviceWidth=(\d+),\s+deviceHeight=(\d+)', fh2)
+					if n:
+						width, height = n.group(1, 2)
+						tps['screen size'] = '%sx%s' % (height, width)
+					else:
+						tps['screen size'] = ''
+						logger.debug(
+							"adb shell error on udid %s: dumpsys display|%s mDefaultViewport" % (tps['udid'], sfind))
+				# android version
+				fh3 = ex_cmd('adb -s %s shell getprop ro.build.version.release' % tps['udid'])[0]
+				if fh3.startswith('error'):
+					return None
+				else:
+					tps['version'] = fh3
+				device_ginfo[tps['udid']] = tps
 			devices.append(tps)
 
 	# thread def end
@@ -165,12 +183,17 @@ def list_devices():
 				tps = dict()
 				tps['type'] = 'iOS'
 				tps['udid'] = line
-				fh2 = ex_cmd('ideviceinfo -u %s -s' % line)
-				for line2 in fh2:
-					if line2.startswith('DeviceClass'):
-						tps['model'] = line2.split()[1]
-					elif line2.startswith('ProductVersion'):
-						tps['version'] = line2.split()[1]
+				if tps['udid'] in device_ginfo:
+					tps = device_ginfo[tps['udid']]
+				else:
+					fh2 = ex_cmd('ideviceinfo -u %s -s' % line)
+					for line2 in fh2:
+						if line2.startswith('DeviceClass'):
+							tps['model'] = line2.split()[1]
+						elif line2.startswith('ProductVersion'):
+							tps['version'] = line2.split()[1]
+							break
+					device_ginfo[tps['udid']] = tps
 				devices.append(tps)
 	resp['devices'] = devices
 	logger.info(resp)
@@ -295,15 +318,15 @@ def install_app():
 	def install_app_sub(ud, package, app_path):
 		flag = "Fail"
 		if app_path.endswith('apk'):
-			ex_cmd('adb -s %s uninstall %s' % (ud, package))
-			res = ex_cmd('adb -s %s install -r %s' % (ud, app_path))
+			ex_cmd('adb -s %s uninstall %s' % (ud, package), 60)
+			res = ex_cmd('adb -s %s install -r %s' % (ud, app_path), 120)
 			for line in res:
 				if line.endswith('Success'):
 					flag = "Success"
 					break
 		else:
-			ex_cmd('ideviceinstaller -u %s -U %s' % (ud, package))
-			res = ex_cmd('ideviceinstaller -u %s -i %s' % (ud, app_path))
+			ex_cmd('ideviceinstaller -u %s -U %s' % (ud, package), 60)
+			res = ex_cmd('ideviceinstaller -u %s -i %s' % (ud, app_path), 120)
 			for line in res:
 				if line.endswith('Complete'):
 					flag = "Success"
@@ -411,6 +434,8 @@ def reset_appium(cmd):
 		# start appium
 		# default appium server port
 		for dev in all_dev:
+			while port_isfree('127.0.0.1', port) is False:
+				port += 10
 			bpport = port + 3
 			chport = port + 6
 			logfile = os.path.join(appium_logpath, 'appium_%d.log' % port)
@@ -424,6 +449,8 @@ def reset_appium(cmd):
 		ct = len(all_dev) - len(all_apm)
 		port = port + len(all_apm) * 10
 		while ct > 0:
+			while port_isfree('127.0.0.1', port) is False:
+				port += 10
 			bpport = port + 3
 			chport = port + 6
 			logfile = os.path.join(appium_logpath, 'appium_%d.log' % port)
