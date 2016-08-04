@@ -266,10 +266,12 @@ def list_appium():
 						if not rstmp2.startswith('error'):
 							rstmp2 = json.loads(rstmp2, encoding='utf-8')
 							tps['phone_type'] = rstmp2['value']['platformName']
-							if tps['phone_type'] == 'iOS':
+							if 'appPackage' in rstmp2['value']:
+								tps['app'] = rstmp2['value']['appPackage']
+							elif 'bundleId' in rstmp2['value']:
 								tps['app'] = rstmp2['value']['bundleId']
 							else:
-								tps['app'] = rstmp2['value']['appPackage']
+								tps['app'] = ''
 							if 'udid' in rstmp2['value']:
 								tps['udid'] = rstmp2['value']['udid']
 							else:

@@ -10,10 +10,10 @@ import socket
 from time import sleep
 from bottle import *
 
-
 # android app and device info
-PKG_NAME = 'com.xxx.xxx'
-UDID = 'xxxxxxxxxxx'
+PKG_NAME = 'com.czbank.mbank'
+UDID = 'NX511J'
+
 # init
 interval = 5
 port = 8888
@@ -39,19 +39,20 @@ pkg_info = {"pkg_name": PKG_NAME, "pid": None, "uid": None, "userId": None, "UDI
 
 # function start
 # ex_cmd
-def ex_cmd(cmd):
+def ex_cmd(cmd, timeout=8):
 	res = list()
 	try:
-		fh = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-		fh.wait()
+		fh = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+		fh.wait(timeout=timeout)
 		for line in fh.stdout.readlines():
 			line = line.decode().strip()
 			if line != '':
 				res.append(line)
-		fh.stdout.close()
 	except Exception as ex:
-		print('run cmd exception: %s' % ex)
-		res.append('error')
+		# res.append('error:%s' % ex)
+		fh.terminate()
+	finally:
+		fh.stdout.close()
 	return res
 
 
