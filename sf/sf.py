@@ -71,6 +71,7 @@ if appium_flag is True:
 		os.makedirs(upload_path)
 	if not os.path.isdir(appium_logpath):
 		os.makedirs(appium_logpath)
+
 if selenium_flag is True:
 	selenium_port = cf.get(pt_name, 'selenium_port')
 	selenium_cmd = cf.get(pt_name, 'selenium_cmd')
@@ -162,6 +163,18 @@ def list_devices():
 					return None
 				else:
 					tps['version'] = fh3
+				# HardwareModel
+				fh4 = ex_cmd('adb -s %s shell cat /proc/cpuinfo' % tps['udid'])[-1]
+				if fh4.startswith('error'):
+					return None
+				else:
+					tps['hardware type'] = fh4.split(':')[1].strip()
+				# Total Memory
+				fh5 = ex_cmd('adb -s %s shell cat /proc/meminfo' % tps['udid'])[0]
+				if fh5.startswith('error'):
+					return None
+				else:
+					tps['MemTotal'] = fh5.split(':')[1].strip().split(' ')[0] + 'KB'
 				device_ginfo[tps['udid']] = tps
 			devices.append(tps)
 
@@ -190,6 +203,8 @@ def list_devices():
 					for line2 in fh2:
 						if line2.startswith('DeviceClass'):
 							tps['model'] = line2.split()[1]
+						elif line2.startswith('HardwareModel'):
+							tps['hardware type'] = line2.split()[1]
 						elif line2.startswith('ProductVersion'):
 							tps['version'] = line2.split()[1]
 							break
@@ -229,7 +244,7 @@ def list_appium():
 						if not rstmp.startswith('error'):
 							rstmp = json.loads(rstmp, encoding='utf-8')
 							tps['version'] = rstmp['value']['build']['version']
-							if 'sessionId' in rstmp:
+							if 'sessionId' in rstmp and rstmp['sessionId'] is not None and rstmp['sessionId'] != 'null':
 								sessionid = rstmp['sessionId']
 								tps['sessionid'] = sessionid
 								url2 = "http://127.0.0.1:%d/wd/hub/session/%s" % (int(port), sessionid)
@@ -258,7 +273,7 @@ def list_appium():
 				if not rstmp.startswith('error'):
 					rstmp = json.loads(rstmp, encoding='utf-8')
 					tps['version'] = rstmp['value']['build']['version']
-					if 'sessionId' in rstmp:
+					if 'sessionId' in rstmp and rstmp['sessionId'] is not None and rstmp['sessionId'] != 'null':
 						sessionid = rstmp['sessionId']
 						tps['sessionid'] = sessionid
 						url2 = "http://127.0.0.1:%d/wd/hub/session/%s" % (int(port), sessionid)
@@ -365,7 +380,7 @@ def install_app():
 			logger.debug("local devices: %s" % (local_udids))
 
 			# fix 20160525
-			select_udids = list();
+			select_udids = list()
 			for ud in udid.split(','):
 				ud = ud.strip()
 				if ud == '':
@@ -430,9 +445,9 @@ def reset_appium(cmd):
 			pid = int(ap['pid'])
 			logger.debug('stop appium pid : %d ' % pid)
 			if pt_name == 'Windows':
-				ex_cmd2('taskkill /T /F /PID %d' % pid)
+				ex_cmd('taskkill /T /F /PID %d' % pid)
 			else:
-				ex_cmd2('kill -9 %d' % pid)
+				ex_cmd('kill -9 %d' % pid)
 		# start appium
 		# default appium server port
 		for dev in all_dev:
@@ -498,6 +513,41 @@ def device_state(udid):
 				resp['value'] = 'offline'
 		else:
 			resp['value'] = 'unknown'
+	logger.info(resp)
+	return resp
+
+
+# 根据udid获取性能数据，only support android
+@app.route('/device/<udid>/mon', method='GET')
+def device_mon(udid):
+	resp = dict()
+	resp['status'] = 0
+	if len(udid) == 40 and pt_name == 'macOS':
+		resp['status'] = 404
+	else:
+		fh = ex_cmd('adb -s %s shell dumpsys cpuinfo' % udid)[-1]
+		if not fh.startswith('error'):
+			cpu_info = fh.split(' ')[0]
+		else:
+			cpu_info = ''
+		resp['cpu'] = cpu_info
+		fh2 = ex_cmd('adb -s %s shell cat /proc/meminfo' % udid)
+		for line2 in fh2:
+			if line2.startswith('MemTotal'):
+				total = line2.split(':')[1].strip().split(' ')[0]
+			elif line2.startswith('MemFree'):
+				free = line2.split(':')[1].strip().split(' ')[0]
+			elif line2.startswith('Buffers'):
+				buffer = line2.split(':')[1].strip().split(' ')[0]
+			elif line2.startswith('Cached'):
+				cached = line2.split(':')[1].strip().split(' ')[0]
+				MemUsage = int(total) - int(free) - int(buffer) - int(cached)
+				mem_info = ('%.3f' % (float(MemUsage) * 100 / int(total)))
+				resp['mem'] = mem_info + '%'
+				break
+			else:
+				resp['mem'] = ''
+				break
 	logger.info(resp)
 	return resp
 
@@ -642,6 +692,20 @@ def list_selenium():
 	return resp
 
 
+# 清理selenium session
+@app.route('/reset_selenium', method='GET')
+def reset_selenium():
+	resp = dict()
+	resp['status'] = 0
+	if selenium_flag is True:
+		sele_info = list_selenium()['value']
+		for sele in sele_info:
+			url = '/wd/hub/session/%s' % sele['id']
+			http_del('127.0.0.1', selenium_port, url)
+	logger.info(resp)
+	return resp
+
+
 # 为指定设备安装minicap等程序
 @app.route('/install_minix/<udid>', method='GET')
 def install_minix(udid):
@@ -652,7 +716,8 @@ def install_minix(udid):
 	return resp
 
 
-reset_devices()
-reset_appium('reboot')
+if appium_flag is True:
+	reset_devices()
+	reset_appium('reboot')
 
 run(app=app, server='cherrypy', host='0.0.0.0', port=port, reloader=False, debug=True)

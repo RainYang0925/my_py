@@ -10,6 +10,7 @@ import hashlib
 import urllib.request
 import subprocess
 import logging
+from http import client
 
 logger = logging.getLogger('main.tools')
 
@@ -30,6 +31,17 @@ def http_get(url):
 			res = 'error:%d' % gt.getcode()
 		gt.close()
 	return res
+
+
+# http delete方法
+def http_del(host, port, url):
+	try:
+		conn = client.HTTPConnection(host=host, port=port)
+		conn.request(method='DELETE', url=url)
+	except Exception as ex:
+		logger.debug('Delete url %s Exception:%s' % (url, ex))
+	finally:
+		conn.close()
 
 
 # 执行命令，有返回,返回内容有大小限制

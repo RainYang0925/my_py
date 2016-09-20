@@ -72,6 +72,8 @@ class sqltool():
 								  'type' varchar(40),
 								  'version' varchar(40),
 								  'screen size' varchar(40),
+								  'hardware type' varchar(100),
+								  'MemTotal' varchar(100),
 								  'address' varchar(80) NOT NULL,
 								  'state' varchar(40) NOT NULL,
 								  PRIMARY KEY ('udid'))
@@ -172,8 +174,10 @@ def ref_devices(sqltk, sf_host):
 			ip = dev['ip']
 			model = dev['model']
 			type = dev['type']
-			sql = "insert into devices values ('%s','%s','%s','%s','%s','%s','%s')" % (
-				udid, model, type, version, screen_size, ip, 'online')
+			hardware_type = dev['hardware type']
+			MemTotal = dev['MemTotal']
+			sql = "insert into devices values ('%s','%s','%s','%s','%s','%s','%s','%s','%s')" % (
+				udid, model, type, version, screen_size, hardware_type, MemTotal, ip, 'online')
 			# print(sql)
 			sqltk.exec_sql(sql)
 	# conn.close()
